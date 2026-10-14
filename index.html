@@ -106,6 +106,20 @@ input.mono { font-family: var(--mono); letter-spacing: .03em; }
 .btn.sec:disabled { background: #fff; color: #a4adbb; }
 button:focus-visible, .seg label:focus-within { outline: 3px solid var(--blue); outline-offset: 2px; }
 /* desenho de medidas */
+.drawings { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.drawings .drawing + .drawing svg { max-width: 420px; margin: 0 auto; }
+.drawing figcaption { font: 600 12px var(--body); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px 2px; }
+figure.drawing { margin: 0; display: grid; align-content: start; }
+.drawings .drawing svg { min-width: 0; }
+.med { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px 16px; align-items: start; }
+@media (max-width: 600px) { .med { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 340px) { .med { grid-template-columns: minmax(0, 1fr); } }
+.med .field label, .med .field .lbl { display: flex; align-items: center; gap: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-height: 24px; }
+.med .tag { flex: 0 0 auto; min-width: 26px; padding: 1px 5px; }
+.med .err { min-height: 1.2em; }
+.unit.auto { background: var(--blue-soft); border-style: dashed; border-color: var(--blue); }
+.unit.auto output { flex: 1; padding: 10px 12px; font: 500 18px var(--mono); color: var(--navy); }
+.unit.auto span { background: transparent; }
 .drawing { overflow-x: auto; background: var(--blue-soft); border-radius: 4px; padding: 8px; }
 .drawing svg { display: block; width: 100%; min-width: 520px; height: auto; }
 .legend { display: grid; gap: 6px; font-size: 15px; }
@@ -265,7 +279,6 @@ footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
       <div class="field"><label for="v_rod">Rodado traseiro</label><select id="v_rod"><option value="">Escolher</option><option>Simples</option><option>Duplo</option></select><span class="err" data-err="v_rod"></span></div>
       <div class="field"><label for="v_pn1">Pneus da frente <small>(X.1)</small></label><input type="text" id="v_pn1" class="mono" placeholder="185 R 14"><span class="err" data-err="v_pn1"></span></div>
       <div class="field"><label for="v_pn2">Pneus de trás <small>(X.2)</small></label><input type="text" id="v_pn2" class="mono" placeholder="185 R 14"><span class="err" data-err="v_pn2"></span></div>
-      <div class="field"><label for="v_pns">Pneu suplente (medida)</label><input type="text" id="v_pns" class="mono" placeholder="Medida, ou «não tem»"><span class="err" data-err="v_pns"></span></div>
     </div><p class="muted" id="eeHelp">Se a distância entre eixos não estiver no certificado, mede-a no passo 6.</p></div>
     <div class="note warn" id="vAvisos" hidden></div>
     <div class="card"><div class="field"><label for="v_z">Observações do certificado <small>(Z)</small></label><textarea id="v_z" rows="2"></textarea></div></div>
@@ -303,10 +316,11 @@ footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
   <!-- 6 MEDIDAS -->
   <section class="step" data-step="5" hidden>
     <h1>Medidas da zona de carga</h1>
-    <p class="lead">Com uma fita métrica, tire as três medidas do desenho. Escreva em centímetros.</p>
+    <p class="lead">Com uma fita métrica, tire as medidas dos desenhos. Escreva em centímetros.</p>
     <div class="card">
-      <p class="note">As medidas são <b>por dentro da zona de carga</b>, de parede a parede, com a fita encostada ao chão do lado de dentro. <b>Toque numa cota do desenho</b> (A, B ou entre eixos) para escrever a medida.</p>
-      <div class="drawing">
+      <p class="note">As medidas são <b>por dentro da zona de carga</b>, de parede a parede, com a fita encostada ao chão do lado de dentro. <b>Toque numa cota do desenho</b> para escrever a medida.</p>
+      <div class="drawings">
+      <figure class="drawing"><figcaption>Vista de lado</figcaption>
         <svg viewBox="0 0 760 360" xmlns="http://www.w3.org/2000/svg" font-family="IBM Plex Mono, Consolas, monospace" role="img" aria-label="Corte lateral de uma viatura comercial com as medidas interiores A e B e a distância entre eixos">
           <defs>
             <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#14254a"/></marker>
@@ -342,20 +356,48 @@ footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
           <g class="hit" data-m="m_ee" tabindex="0" role="button" aria-label="Escrever a distância entre eixos"><rect x="219" y="317" width="200" height="30" rx="4" fill="#14254a"/><text x="319" y="337" text-anchor="middle" font-size="13" fill="#fff" font-weight="500" data-lbl="m_ee">ENTRE EIXOS ✎</text></g>
           <text x="40" y="96" font-size="12" fill="#5b6678">FRENTE</text><text x="712" y="96" font-size="12" fill="#5b6678" text-anchor="middle">TRÁS</text>
         </svg>
+      </figure>
+      <figure class="drawing"><figcaption>Vista de trás, portas abertas</figcaption>
+        <svg viewBox="0 0 360 330" xmlns="http://www.w3.org/2000/svg" font-family="IBM Plex Mono, Consolas, monospace" role="img" aria-label="Vista de trás da zona de carga com a largura e a altura interiores">
+          <defs>
+            <marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#14254a"/></marker>
+            <pattern id="hat2" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="8" stroke="#2a86d9" stroke-width="1.2" opacity=".3"/></pattern>
+          </defs>
+          <line x1="20" y1="300" x2="340" y2="300" stroke="#5b6678" stroke-width="1.5"/>
+          <rect x="110" y="244" width="30" height="56" rx="5" fill="#1b2433"/><rect x="230" y="244" width="30" height="56" rx="5" fill="#1b2433"/>
+          <rect x="96" y="232" width="188" height="14" fill="#5b6678"/>
+          <rect x="90" y="40" width="200" height="192" fill="#14254a"/>
+          <rect x="102" y="50" width="176" height="172" fill="#ffffff"/>
+          <rect x="102" y="50" width="176" height="172" fill="url(#hat2)"/>
+          <line x1="104" y1="217" x2="276" y2="217" stroke="#e8a317" stroke-width="5" stroke-linecap="round"/>
+          <line x1="268" y1="214" x2="268" y2="56" stroke="#e8a317" stroke-width="5" stroke-linecap="round"/>
+          <text x="190" y="125" text-anchor="middle" font-size="12" fill="#14254a" font-weight="500">INTERIOR</text>
+          <text x="190" y="142" text-anchor="middle" font-size="10" fill="#5b6678">(por dentro)</text>
+          <g stroke="#14254a" stroke-width="1" stroke-dasharray="3 3"><line x1="102" y1="222" x2="102" y2="270"/><line x1="278" y1="222" x2="278" y2="270"/><line x1="102" y1="50" x2="36" y2="50"/><line x1="102" y1="222" x2="36" y2="222"/></g>
+          <line x1="104" y1="262" x2="276" y2="262" stroke="#14254a" stroke-width="1.6" marker-start="url(#ar2)" marker-end="url(#ar2)"/>
+          <g class="hit" data-m="m_l" tabindex="0" role="button" aria-label="Escrever a largura interior"><rect x="120" y="248" width="140" height="28" rx="4" fill="#14254a"/><text x="190" y="267" text-anchor="middle" font-size="12" fill="#fff" font-weight="500" data-lbl="m_l">L · largura ✎</text></g>
+          <line x1="44" y1="52" x2="44" y2="220" stroke="#14254a" stroke-width="1.6" marker-start="url(#ar2)" marker-end="url(#ar2)"/>
+          <g class="hit" data-m="m_h" tabindex="0" role="button" aria-label="Escrever a altura interior"><rect x="2" y="122" width="84" height="28" rx="4" fill="#14254a"/><text x="44" y="141" text-anchor="middle" font-size="11.5" fill="#fff" font-weight="500" data-lbl="m_h">H · altura ✎</text></g>
+        </svg>
+      </figure>
       </div>
       <div class="legend">
         <div><span class="tag">A</span><span>Por dentro: da <b>parede da frente</b> até ao ponto do chão da caixa que fica por cima do <b>centro da roda de trás</b>.</span></div>
         <div><span class="tag navy">B</span><span>Por dentro: <b>comprimento interior total</b>, da parede da frente até à porta de trás fechada.</span></div>
         <div><span class="tag grey">C</span><span>Do centro da roda de trás ao fim da zona de carga. <b>Não precisa de medir</b>: C = B − A.</span></div>
+        <div><span class="tag navy">L</span><span>Por dentro: <b>largura interior</b>, de parede a parede, junto ao chão.</span></div>
+        <div><span class="tag navy">H</span><span>Por dentro: <b>altura interior</b>, do chão da caixa ao teto. Numa caixa aberta, até ao topo dos taipais.</span></div>
         <div><span class="tag navy">EE</span><span><b>Distância entre eixos</b>: do centro da roda da frente ao centro da roda de trás, do mesmo lado.</span></div>
       </div>
       <p class="muted">Dica: o centro da roda é o centro da tampa da jante. Encoste uma régua na vertical e marque o ponto no chão com giz.</p>
-      <div class="grid">
-        <div class="field"><label for="m_a">A · Frente da carga ao eixo traseiro</label><div class="unit"><input id="m_a" inputmode="decimal"><span>cm</span></div><span class="err" data-err="m_a"></span></div>
-        <div class="field"><label for="m_b">B · Comprimento interior total</label><div class="unit"><input id="m_b" inputmode="decimal"><span>cm</span></div><span class="err" data-err="m_b"></span></div>
-        <div class="field"><label for="m_ee">Distância entre eixos</label><div class="unit"><input id="m_ee" inputmode="decimal"><span>cm</span></div><span class="err" data-err="m_ee"></span></div>
+      <div class="med">
+        <div class="field"><label for="m_a"><span class="tag">A</span>Até ao eixo traseiro</label><div class="unit"><input id="m_a" inputmode="decimal"><span>cm</span></div><span class="err" data-err="m_a"></span></div>
+        <div class="field"><label for="m_b"><span class="tag navy">B</span>Comprimento interior</label><div class="unit"><input id="m_b" inputmode="decimal"><span>cm</span></div><span class="err" data-err="m_b"></span></div>
+        <div class="field"><span class="lbl"><span class="tag grey">C</span>Eixo ao fim (B − A)</span><div class="unit auto"><output id="m_c">—</output><span>cm</span></div><span class="err"></span></div>
+        <div class="field"><label for="m_l"><span class="tag navy">L</span>Largura interior</label><div class="unit"><input id="m_l" inputmode="decimal"><span>cm</span></div><span class="err" data-err="m_l"></span></div>
+        <div class="field"><label for="m_h"><span class="tag navy">H</span>Altura interior</label><div class="unit"><input id="m_h" inputmode="decimal"><span>cm</span></div><span class="err" data-err="m_h"></span></div>
+        <div class="field"><label for="m_ee"><span class="tag navy">EE</span>Entre eixos</label><div class="unit"><input id="m_ee" inputmode="decimal"><span>cm</span></div><span class="err" data-err="m_ee"></span></div>
       </div>
-      <div class="calc"><span>C · Do eixo traseiro ao fim da carga (B − A)</span><output id="m_c">—</output></div>
       <div class="field"><label for="obs">Observações</label><textarea id="obs" rows="3" placeholder="Por exemplo: a medida B foi tirada até às dobradiças da porta."></textarea></div>
     </div>
   </section>
@@ -448,50 +490,71 @@ footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
   // Desenho de como a fotografia deve ficar: a viatura no ângulo pedido, dentro do visor.
   function face(type, N, F, T, B, T2, B2, sideNear) {
     function pt(u, v) { var x = N + (F - N) * u, yt = T + (T2 - T) * u, yb = B + (B2 - B) * u; return [x, yt + (yb - yt) * v]; }
-    function poly(us, vs, fill, stroke, sw) {
-      var pts = [pt(us[0], vs[0]), pt(us[1], vs[0]), pt(us[1], vs[1]), pt(us[0], vs[1])];
-      return '<polygon points="' + pts.map(function (q) { return q[0].toFixed(1) + "," + q[1].toFixed(1); }).join(" ") + '" fill="' + fill + '" stroke="' + (stroke || "#14254a") + '" stroke-width="' + (sw || 1) + '" stroke-linejoin="round"/>';
+    function P(pts, fill, stroke, sw) {
+      return '<polygon points="' + pts.map(function (q) { var a = pt(q[0], q[1]); return a[0].toFixed(1) + "," + a[1].toFixed(1); }).join(" ") + '" fill="' + fill + '" stroke="' + (stroke || "#14254a") + '" stroke-width="' + (sw == null ? 1 : sw) + '" stroke-linejoin="round"/>';
     }
-    var o = poly([0, 1], [0, 1], "#ffffff", "#14254a", 2);
+    function R(u0, u1, v0, v1, f, st, sw) { return P([[u0, v0], [u1, v0], [u1, v1], [u0, v1]], f, st, sw); }
+    function L(u0, v0, u1, v1, st, sw) { var a = pt(u0, v0), b = pt(u1, v1); return '<line x1="' + a[0].toFixed(1) + '" y1="' + a[1].toFixed(1) + '" x2="' + b[0].toFixed(1) + '" y2="' + b[1].toFixed(1) + '" stroke="' + (st || "#14254a") + '" stroke-width="' + (sw || 1) + '"/>'; }
+    var NAVY = "#14254a", GLASS = "#bcd7f2", TYRE = "#1b2433", RIM = "#d5dce6", o = "";
     if (type === "front") {
-      o += poly([0.1, 0.9], [0.1, 0.42], "#cfe2f5");
-      o += poly([0.06, 0.26], [0.6, 0.72], "#ffd27a") + poly([0.74, 0.94], [0.6, 0.72], "#ffd27a");
-      o += poly([0.32, 0.68], [0.58, 0.72], "#d5dce6");
-      o += poly([0.33, 0.67], [0.8, 0.92], "#ffffff", "#14254a", 1.4);
+      o += R(0.04, 0.96, 0, 0.3, "#eef2f7", NAVY, 1.6);                                   // frente da caixa, por cima da cabine
+      o += R(0.1, 0.24, 0.86, 1, TYRE, TYRE, 0) + R(0.76, 0.9, 0.86, 1, TYRE, TYRE, 0);     // rodas
+      o += P([[0.05, 0.3], [0.95, 0.3], [0.98, 0.88], [0.02, 0.88]], "#ffffff", NAVY, 2);   // cabine
+      o += P([[0.11, 0.34], [0.89, 0.34], [0.92, 0.56], [0.08, 0.56]], GLASS, NAVY, 1.2);   // para-brisas
+      o += L(0.5, 0.34, 0.5, 0.56, "#ffffff", 1);
+      o += R(0.06, 0.25, 0.61, 0.69, "#ffd27a", NAVY, 1) + R(0.75, 0.94, 0.61, 0.69, "#ffd27a", NAVY, 1); // faróis
+      o += R(0.31, 0.69, 0.6, 0.71, "#d5dce6", NAVY, 1) + L(0.33, 0.645, 0.67, 0.645, NAVY, 0.6);       // grelha
+      o += R(0.03, 0.97, 0.75, 0.88, "#3a4559", NAVY, 1);                                  // para-choques
+      o += R(0.37, 0.63, 0.77, 0.85, "#ffffff", NAVY, 0.8);                                // matrícula
+      o += R(-0.04, 0.02, 0.42, 0.52, "#3a4559", NAVY, 0.8) + R(0.98, 1.04, 0.42, 0.52, "#3a4559", NAVY, 0.8); // espelhos
     } else if (type === "rear") {
-      var l = pt(0.5, 0.06), r = pt(0.5, 0.94);
-      o += '<line x1="' + l[0].toFixed(1) + '" y1="' + l[1].toFixed(1) + '" x2="' + r[0].toFixed(1) + '" y2="' + r[1].toFixed(1) + '" stroke="#14254a" stroke-width="1.2"/>';
-      o += poly([0.04, 0.14], [0.58, 0.8], "#e0533d") + poly([0.86, 0.96], [0.58, 0.8], "#e0533d");
-      o += poly([0.33, 0.67], [0.82, 0.93], "#ffffff", "#14254a", 1.4);
+      o += R(0.1, 0.26, 0.86, 1, TYRE, TYRE, 0) + R(0.74, 0.9, 0.86, 1, TYRE, TYRE, 0);
+      o += R(0.02, 0.98, 0, 0.8, "#ffffff", NAVY, 2);                                      // traseira da caixa
+      o += L(0.5, 0.03, 0.5, 0.78, NAVY, 1.2);                                             // portas
+      o += R(0.44, 0.47, 0.36, 0.5, NAVY, NAVY, 0) + R(0.53, 0.56, 0.36, 0.5, NAVY, NAVY, 0); // puxadores
+      [0.12, 0.4, 0.68].forEach(function (v) { o += R(0.03, 0.07, v, v + 0.05, NAVY, NAVY, 0) + R(0.93, 0.97, v, v + 0.05, NAVY, NAVY, 0); }); // dobradiças
+      o += R(0.04, 0.96, 0.8, 0.89, "#3a4559", NAVY, 1);                                   // para-choques
+      o += R(0.05, 0.18, 0.81, 0.88, "#e0533d", NAVY, 0.8) + R(0.82, 0.95, 0.81, 0.88, "#e0533d", NAVY, 0.8); // farolins
+      o += R(0.39, 0.61, 0.815, 0.875, "#ffffff", NAVY, 0.8);                              // matrícula
     } else {
-      // lado: cabine junto à frente, rodas perto das pontas
-      var fr = function (u) { return sideNear === "front" ? u : 1 - u; };
-      o += poly([fr(0.03), fr(0.2)], [0.12, 0.42], "#cfe2f5");
-      var dv = pt(fr(0.24), 0.05), dv2 = pt(fr(0.24), 0.9);
-      o += '<line x1="' + dv[0].toFixed(1) + '" y1="' + dv[1].toFixed(1) + '" x2="' + dv2[0].toFixed(1) + '" y2="' + dv2[1].toFixed(1) + '" stroke="#14254a" stroke-width="1.2"/>';
-      [0.14, 0.8].forEach(function (u) {
-        var c = pt(fr(u), 1), rx = Math.max(4, Math.abs(F - N) * 0.075), ry = (B - T) * 0.15;
-        o += '<ellipse cx="' + c[0].toFixed(1) + '" cy="' + (c[1] - ry * 0.35).toFixed(1) + '" rx="' + rx.toFixed(1) + '" ry="' + ry.toFixed(1) + '" fill="#1b2433"/>';
-        o += '<ellipse cx="' + c[0].toFixed(1) + '" cy="' + (c[1] - ry * 0.35).toFixed(1) + '" rx="' + (rx * 0.42).toFixed(1) + '" ry="' + (ry * 0.42).toFixed(1) + '" fill="#d5dce6"/>';
+      // lado: f = 0 na frente da viatura
+      var u = function (f) { return sideNear === "front" ? f : 1 - f; };
+      var Pf = function (pts, fill, st, sw) { return P(pts.map(function (q) { return [u(q[0]), q[1]]; }), fill, st, sw); };
+      o += Pf([[0.26, 0.8], [1, 0.8], [1, 0.87], [0.24, 0.87]], "#5b6678", NAVY, 0.8);      // chassis
+      o += Pf([[0.27, 0], [1, 0], [1, 0.8], [0.27, 0.8]], "#ffffff", NAVY, 2);              // caixa
+      o += Pf([[0.29, 0.08], [0.98, 0.08]], "none", "#d5dce6", 1);
+      o += L(u(0.29), 0.09, u(0.98), 0.09, "#d5dce6", 1.2);                                // friso
+      o += Pf([[0, 0.45], [0.035, 0.3], [0.255, 0.3], [0.255, 0.88], [0, 0.88]], "#ffffff", NAVY, 2); // cabine
+      o += Pf([[0.04, 0.35], [0.2, 0.35], [0.2, 0.56], [0.018, 0.56]], GLASS, NAVY, 1.1);   // vidro
+      o += L(u(0.215), 0.33, u(0.215), 0.86, NAVY, 1);                                     // porta
+      o += Pf([[0.17, 0.62], [0.2, 0.62], [0.2, 0.65], [0.17, 0.65]], NAVY, NAVY, 0);       // puxador
+      o += Pf([[0, 0.66], [0.02, 0.66], [0.02, 0.74], [0, 0.74]], "#ffd27a", NAVY, 0.6);    // farol de lado
+      o += Pf([[0.985, 0.62], [1, 0.62], [1, 0.74], [0.985, 0.74]], "#e0533d", NAVY, 0.4);  // farolim
+      [0.13, 0.8].forEach(function (f) {
+        var c = pt(u(f), 0.9), rx = Math.max(4.5, Math.abs(F - N) * 0.07), ry = (B - T) * 0.13;
+        o += '<ellipse cx="' + c[0].toFixed(1) + '" cy="' + c[1].toFixed(1) + '" rx="' + (rx * 1.15).toFixed(1) + '" ry="' + (ry * 1.15).toFixed(1) + '" fill="#3a4559"/>';
+        o += '<ellipse cx="' + c[0].toFixed(1) + '" cy="' + c[1].toFixed(1) + '" rx="' + rx.toFixed(1) + '" ry="' + ry.toFixed(1) + '" fill="' + TYRE + '"/>';
+        o += '<ellipse cx="' + c[0].toFixed(1) + '" cy="' + c[1].toFixed(1) + '" rx="' + (rx * 0.45).toFixed(1) + '" ry="' + (ry * 0.45).toFixed(1) + '" fill="' + RIM + '"/>';
       });
     }
     return o;
   }
   function guideSVG(cfg) {
-    var body = "", T = 22, B = 92, T2 = 31, B2 = 85;
+    var body = "", T = 20, B = 98, T2 = 30, B2 = 90;
     var faceW = { front: 46, rear: 46, side: 122 };
     if (cfg.flat) {
       var w = cfg.flat === "side" ? 168 : 76, x0 = 100 - w / 2;
       // lateral: frente à direita da imagem
-      body = cfg.flat === "side" ? face("side", x0 + w, x0, 30, 90, 30, 90, "front") : face("rear", x0, x0 + w, 20, 92, 20, 92);
+      body = cfg.flat === "side" ? face("side", x0 + w, x0, 30, 98, 30, 98, "front") : face("rear", x0, x0 + w, 18, 98, 18, 98);
     } else {
       var wl = faceW[cfg.L], wr = faceW[cfg.R], N = 100 - (wr - wl) / 2;
       body = face(cfg.L, N, N - wl, T, B, T2, B2, cfg.sideNear) + face(cfg.R, N, N + wr, T, B, T2, B2, cfg.sideNear);
     }
     var vf = '<g stroke="#2a86d9" stroke-width="2.5" fill="none" stroke-linecap="round"><path d="M6 18 V6 H18"/><path d="M182 6 H194 V18"/><path d="M6 102 V114 H18"/><path d="M194 102 V114 H182"/></g>';
-    var ground = '<ellipse cx="100" cy="96" rx="92" ry="6" fill="#14254a" opacity=".1"/>';
+    var ground = '<rect x="0" y="0" width="200" height="120" fill="#eaf2fb"/><rect x="0" y="88" width="200" height="32" fill="#dfe6d8"/><ellipse cx="100" cy="94" rx="90" ry="7" fill="#14254a" opacity=".16"/>';
     var inset = '<g transform="translate(150,74) scale(.4)"><rect x="0" y="0" width="100" height="100" rx="8" fill="#ffffff" stroke="#d5dce6" stroke-width="2"/>' + topView(cfg).replace(/^<svg[^>]*>|<\/svg>$/g, "") + "</g>";
     var tag = '<g><rect x="10" y="10" width="' + (cfg.flat ? 46 : 30) + '" height="14" rx="3" fill="#14254a"/><text x="' + (cfg.flat ? 33 : 25) + '" y="20.5" text-anchor="middle" font-size="9" font-weight="600" fill="#fff" font-family="IBM Plex Mono, monospace">' + (cfg.flat ? (cfg.flat === "side" ? "LADO" : "TRÁS") : "45°") + "</text></g>";
+    var nome = '<text x="100" y="114" text-anchor="middle" font-size="8.5" font-weight="600" fill="#14254a" font-family="Barlow, Arial, sans-serif">' + cfg.nome.toUpperCase() + "</text>";
     return '<svg class="guide" viewBox="0 0 200 120" aria-hidden="true">' + ground + body + vf + tag + "</svg>";
   }
   function docIcon() {
@@ -840,9 +903,9 @@ footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
       viatura: { matricula: fmtMat(val("v_mat")), data_primeira: val("v_data1"), data_matricula: val("v_data"), matricula_anterior: val("v_matant"), importada: $("impS").checked ? "Sim" : "Não", marca: val("v_marca"), modelo: val("v_modelo"), denominacao: val("v_den"), vin: norm(val("v_vin")), homologacao: val("v_hom"),
         categoria: val("v_cat"), tipo: val("v_tipo"), carrocaria: val("v_carr"), cor: val("v_cor"), lugares: val("v_lug"), lugares_pe: val("v_lugp"), tara: val("v_tara"), peso_bruto: val("v_bruto"), peso_bruto_tecnico: val("v_brutot"), peso_conjunto: val("v_conj"),
         eixo_frente_max: val("v_ef"), eixo_tras_max: val("v_et"), reboque_travado: val("v_o1"), reboque_nao_travado: val("v_o2"), cilindrada: val("v_cil"), potencia: val("v_pot"), combustivel: val("v_comb"), eixos: val("v_eixos"), entre_eixos: val("v_ee"),
-        rodado: val("v_rod"), pneus_frente: val("v_pn1"), pneus_tras: val("v_pn2"), pneu_suplente: val("v_pns"), observacoes: val("v_z") },
+        rodado: val("v_rod"), pneus_frente: val("v_pn1"), pneus_tras: val("v_pn2"), observacoes: val("v_z") },
       inspecao: { pendente: $("facPend").checked && !FILES.fac.file ? "Sim" : "", peso_frente: val("p_f"), peso_tras: val("p_t"), peso_total: pf > 0 && pt > 0 ? String(pf + pt) : "" },
-      medidas: { a: val("m_a"), b: val("m_b"), c: a > 0 && b > a ? String(Math.round((b - a) * 10) / 10) : "", entre_eixos: val("m_ee"), observacoes: val("obs") }
+      medidas: { a: val("m_a"), b: val("m_b"), c: a > 0 && b > a ? String(Math.round((b - a) * 10) / 10) : "", largura: val("m_l"), altura: val("m_h"), entre_eixos: val("m_ee"), observacoes: val("obs") }
     };
   }
   function ficheirosPedido() {
@@ -890,7 +953,6 @@ footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
         else el.value = val;
         el.closest(".field").classList.add("ai"); n++;
       });
-      if (r.pneus_tras && !$("v_pns").value) $("v_pns").placeholder = "Ex.: " + r.pneus_tras + " (confirme na viatura)";
       impAuto(); syncEE("v_ee");
       $("eeHelp").textContent = ee > 0 ? "Distância entre eixos lida do certificado. Já está preenchida no passo 6." : "O certificado não indica a distância entre eixos. Mede-a no passo 6.";
       f.status = v.status = "ok"; f.msgs = v.msgs = [r._fonte === "ocr" ? "Lido no telemóvel" + (r._conf ? " (confiança " + r._conf + "%)." : ".") : "Lido automaticamente."];
@@ -974,7 +1036,6 @@ footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
       else if (num("v_tara") >= num("v_bruto")) E.v_bruto = "O peso bruto tem de ser maior do que a tara.";
       if (!val("v_rod")) E.v_rod = "Escolha simples ou duplo.";
       if (!val("v_pn1")) E.v_pn1 = "Indique a medida dos pneus.";
-      if (!val("v_pns")) E.v_pns = "Indique a medida do suplente (ou escreva «não tem».)";
       // coerência entre campos do certificado
       var hoje = new Date().toISOString().slice(0, 10), d1 = val("v_data1"), d2 = val("v_data");
       if (d2 && (d2 > hoje || d2 < "1950-01-01")) E.v_data = "Data impossível. Confirme no campo I do certificado.";
@@ -1004,6 +1065,9 @@ footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
       if (a > 0 && b > 0 && a >= b) E.m_a = "A tem de ser menor do que B.";
       if (b > 700) E.m_b = "Parece grande demais. As medidas são em centímetros.";
       if (ee > 500) E.m_ee = "Parece grande demais. As medidas são em centímetros.";
+      var ml = num("m_l"), mh = num("m_h");
+      if (!(ml > 0)) E.m_l = "Indique a largura interior."; else if (ml < 50 || ml > 300) E.m_l = "Confirme: entre 50 e 300 cm.";
+      if (!(mh > 0)) E.m_h = "Indique a altura interior."; else if (mh < 20 || mh > 350) E.m_h = "Confirme: entre 20 e 350 cm.";
     }
     return E;
   }
@@ -1043,7 +1107,7 @@ footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
   function calcs() {
     avisosViatura();
     var a = num("m_a"), b = num("m_b"), t = num("v_tara"), br = num("v_bruto"), pf = num("p_f"), pt = num("p_t");
-    $("m_c").textContent = (a > 0 && b > a) ? fmt(b - a, "cm") : "—";
+    $("m_c").textContent = (a > 0 && b > a) ? (Math.round((b - a) * 10) / 10).toLocaleString("pt-PT") : "—";
     $("v_cu").textContent = (t > 0 && br > t) ? fmt(br - t, "kg") : "—";
     $("p_tot").textContent = (pf > 0 && pt > 0) ? fmt(pf + pt, "kg") : "—";
     paintCotas();
@@ -1107,7 +1171,7 @@ footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
   };
 
   // ---------- campos ----------
-  var TEXT = ["q_trab", "q_caixa", "q_desc", "c_nome", "c_nif", "c_cc", "c_morada", "c_cp", "c_loc", "c_tel", "c_email", "c_prop", "v_mat", "v_data1", "v_data", "v_matant", "v_marca", "v_modelo", "v_den", "v_vin", "v_hom", "v_cat", "v_tipo", "v_carr", "v_cor", "v_lug", "v_lugp", "v_tara", "v_bruto", "v_brutot", "v_conj", "v_ef", "v_et", "v_o1", "v_o2", "v_cil", "v_pot", "v_comb", "v_eixos", "v_ee", "v_rod", "v_pn1", "v_pn2", "v_pns", "v_z", "p_f", "p_t", "m_a", "m_b", "m_ee", "obs"];
+  var TEXT = ["q_trab", "q_caixa", "q_desc", "c_nome", "c_nif", "c_cc", "c_morada", "c_cp", "c_loc", "c_tel", "c_email", "c_prop", "v_mat", "v_data1", "v_data", "v_matant", "v_marca", "v_modelo", "v_den", "v_vin", "v_hom", "v_cat", "v_tipo", "v_carr", "v_cor", "v_lug", "v_lugp", "v_tara", "v_bruto", "v_brutot", "v_conj", "v_ef", "v_et", "v_o1", "v_o2", "v_cil", "v_pot", "v_comb", "v_eixos", "v_ee", "v_rod", "v_pn1", "v_pn2", "v_z", "p_f", "p_t", "m_a", "m_b", "m_l", "m_h", "m_ee", "obs"];
   var KEY = "ryrox-legalizacao-rascunho";
   function saveDraft() { try { var d = {}; TEXT.forEach(function (k) { d[k] = $(k).value; }); d.tipo = $("tipoE").checked ? "e" : "p"; d.prop = $("propN").checked ? "n" : "s"; d.fac = $("facPend").checked; d.imp = $("impS").checked; localStorage.setItem(KEY, JSON.stringify(d)); } catch (e) {} }
   try {
@@ -1154,7 +1218,9 @@ footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
   var MH = {
     m_a: ["A · Da parede da frente ao eixo traseiro", "Por dentro da zona de carga, da parede da frente até ao ponto por cima do centro da roda de trás."],
     m_b: ["B · Comprimento interior total", "Por dentro da zona de carga, da parede da frente até à porta de trás fechada."],
-    m_ee: ["Distância entre eixos", "Do centro da roda da frente ao centro da roda de trás, do mesmo lado da viatura."]
+    m_ee: ["Distância entre eixos", "Do centro da roda da frente ao centro da roda de trás, do mesmo lado da viatura."],
+    m_l: ["L · Largura interior", "Por dentro da zona de carga, de parede a parede, junto ao chão."],
+    m_h: ["H · Altura interior", "Do chão da caixa ao teto, por dentro. Numa caixa aberta, até ao topo dos taipais."]
   };
   var mFor = null;
   function openM(id) {
@@ -1183,6 +1249,9 @@ footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
     document.querySelector('[data-lbl="m_a"]').textContent = a > 0 ? "A = " + fmt(a, "cm") + " ✎" : "A · até ao eixo ✎";
     document.querySelector('[data-lbl="m_b"]').textContent = b > 0 ? "B = " + fmt(b, "cm") + " ✎" : "B · interior total ✎";
     document.querySelector('[data-lbl="m_ee"]').textContent = ee > 0 ? "Entre eixos = " + fmt(ee, "cm") + " ✎" : "ENTRE EIXOS ✎";
+    var ml = num("m_l"), mh = num("m_h");
+    document.querySelector('[data-lbl="m_l"]').textContent = ml > 0 ? "L = " + fmt(ml, "cm") + " ✎" : "L · largura ✎";
+    document.querySelector('[data-lbl="m_h"]').textContent = mh > 0 ? "H = " + fmt(mh, "cm") : "H · altura ✎";
     document.querySelector('[data-lbl="m_c"]').textContent = (a > 0 && b > a) ? "C = " + fmt(b - a, "cm") : "C = B − A";
   }
 
