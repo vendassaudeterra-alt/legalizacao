@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex">
 <title>Pedido de Legalização Ryrox</title>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js" defer></script>
+<script src="ocr-dua.js" defer></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
 <style>
@@ -371,7 +373,7 @@ footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
 (function () {
   "use strict";
   var $ = function (id) { return document.getElementById(id); };
-  var NOAI = "A leitura automática ainda não está ativa. Preencha os dados da viatura no passo seguinte, com o certificado à sua frente.";
+  var NOAI = "Não foi possível preparar a leitura automática neste telemóvel. Preencha os dados da viatura no passo seguinte, com o certificado à sua frente.";
   var STEPS = ["Cliente", "Certificado", "Viatura", "Inspeções", "Fotografias", "Medidas", "Enviar"];
   var cur = 0;
   var sample = null, aiImages = false, duaBusy = false, duaReadFor = null, duaOn = true;
@@ -566,6 +568,7 @@ footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
       if (!s.msgs.length) s.msgs = ["Verificação básica: qualidade boa."];
       paintSlot(id); refresh();
       if (aiImages && (c.foto || id === "insp" || id === "fac")) aiCheck(id);
+      else if ((id === "insp" || id === "fac") && window.OcrDua && window.Tesseract) lerFicha(id);
       if ((id === "dua_f" || id === "dua_v")) autoDua();
     }).catch(function () {
       s.status = "erro"; s.msgs = ["Não conseguimos abrir esta imagem. Use uma fotografia JPG ou PNG (no iPhone: Definições › Câmara › Formatos › Mais compatível)."];
@@ -639,6 +642,31 @@ footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
       if ($(from).closest(".field").classList.contains("ai")) $(to).closest(".field").classList.add("ai");
     }
   }
+  function lerFicha(id) {
+    var s = FILES[id], fileAtStart = s.file, base = s.status;
+    s.msgs = s.msgs.filter(function (m) { return !/^Verificação básica/.test(m); }).concat(["A ler a ficha..."]); paintSlot(id);
+    OcrDua.lerInspecao(s.file).then(function (r) {
+      if (s.file !== fileAtStart) return;
+      var msgs = s.msgs.filter(function (m) { return m !== "A ler a ficha..."; }), mat = norm($("v_mat").value), st = base;
+      var info = [];
+      if (r.data) info.push("data " + r.data.split("-").reverse().join("/"));
+      if (r.matricula) info.push("matrícula " + r.matricula);
+      if (info.length) msgs.push("Lido na ficha: " + info.join(", ") + ".");
+      if (!r.e_inspecao) { msgs.push("Não reconhecemos uma ficha de inspeção. Confirme que é o documento certo e que se lê bem."); st = "aviso"; }
+      if (r.matricula && mat && norm(r.matricula) !== mat) { msgs.push("A matrícula lida (" + r.matricula + ") é diferente de " + fmtMat(mat) + ". Confirme se é a ficha desta viatura."); st = "aviso"; }
+      if (id === "fac" && r.peso_frente && r.peso_tras) {
+        if (!$("p_f").value) { $("p_f").value = r.peso_frente; $("p_f").closest(".field").classList.add("ai"); }
+        if (!$("p_t").value) { $("p_t").value = r.peso_tras; $("p_t").closest(".field").classList.add("ai"); }
+        $("pesoTxt").textContent = "Pesos lidos da ficha (a azul). Confirme que estão certos.";
+        msgs.push("Pesos lidos: frente " + r.peso_frente + " kg, trás " + r.peso_tras + " kg.");
+        saveDraft();
+      } else if (id === "fac") msgs.push("Não conseguimos ler os pesos. Escreva-os abaixo.");
+      s.msgs = msgs; s.status = st; paintSlot(id); refresh();
+    }).catch(function () {
+      if (s.file !== fileAtStart) return;
+      s.msgs = s.msgs.filter(function (m) { return m !== "A ler a ficha..."; }); paintSlot(id);
+    });
+  }
   function autoDua() {
     var f = FILES.dua_f, v = FILES.dua_v;
     if (!duaOn || duaBusy || !f.file || !v.file || !f.url || !v.url) return;
@@ -662,6 +690,20 @@ footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
   function post(rota, body) {
     return fetch(API + rota, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) })
       .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok) throw { code: r.status === 503 ? "indisponivel" : "erro", message: j.erro || "" }; return j; }); });
+  }
+  var servidorSemChave = false;
+  function lerCertificado(a, b, onP) {
+    var local = function () {
+      if (!window.OcrDua || !window.Tesseract) return Promise.reject({ code: "indisponivel" });
+      return OcrDua.ler(a, b, onP).then(function (r) {
+        var n = Object.keys(r).filter(function (k) { return k[0] !== "_" && k !== "avisos" && r[k] != null; }).length;
+        r.e_certificado = n >= 5; r.legivel = n >= 5; r._fonte = "ocr";
+        if (n < 5) r.problemas = ["Não conseguimos ler o certificado. Fotografe-o de novo: em cima de uma mesa, com boa luz, sem reflexos e com o cartão a ocupar quase toda a fotografia."];
+        return r;
+      }, function () { throw { code: "ocr" }; });
+    };
+    if (servidorSemChave) return local();
+    return lerServidor(a, b).catch(function (e) { if (e && e.code === "indisponivel") { servidorSemChave = true; return local(); } return local(); });
   }
   function lerServidor(a, b) {
     return Promise.all([jpeg(a, 1600), jpeg(b, 1600)]).then(function (x) {
@@ -702,7 +744,7 @@ footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
       '"tara_kg": "G", "peso_bruto_kg": "F.2", "peso_bruto_tecnico_kg": "F.1", "peso_conjunto_kg": "F.3", "eixo_frente_max_kg": "N.1", "eixo_tras_max_kg": "N.2", "numero_eixos": number|null (conta os valores de N), "reboque_travado_kg": "O.1", "reboque_nao_travado_kg": "O.2", ' +
       '"cilindrada_cm3": "P.1", "potencia_kw": "P.2", "combustivel": "Gasóleo"|"Gasolina"|"Elétrico"|"Híbrido"|"GPL"|"Outro" (P.3), "distancia_entre_eixos_mm": number|null (só se estiver escrita no certificado, ex. campo M), ' +
       '"rodado_traseiro": "Simples"|"Duplo"|null (Duplo só se os pneus de trás indicarem rodado duplo), "pneus_frente": "X.1", "pneus_tras": "X.2", "observacoes": "Z, linhas juntas", "problemas": [frases curtas em português de Portugal para o cliente]}.';
-    lerServidor(f.file, v.file).then(function (r) {
+    lerCertificado(f.file, v.file, function (p, t) { $("duaAiTxt").textContent = (t || "A ler o certificado...") + " " + Math.round(p * 100) + "%"; }).then(function (r) {
       if (!r || !r.e_certificado || r.legivel === false) {
         f.status = v.status = "erro";
         f.msgs = v.msgs = (r && r.problemas && r.problemas.length) ? r.problemas.map(String) : ["Não conseguimos ler o certificado. Fotografe de novo, mais perto e sem reflexos."];
@@ -730,7 +772,11 @@ footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
       $("eeHelp").textContent = ee > 0 ? "Distância entre eixos lida do certificado. Já está preenchida no passo 6." : "O certificado não indica a distância entre eixos. Mede-a no passo 6.";
       f.status = v.status = "ok"; f.msgs = v.msgs = ["Lido por IA."];
       paintSlot("dua_f"); paintSlot("dua_v");
-      $("duaAiTxt").textContent = n + " campos preenchidos. Confirme-os no passo seguinte.";
+      var falta = [["v_mat", "matrícula"], ["v_data", "data da matrícula"], ["v_marca", "marca"], ["v_modelo", "modelo"], ["v_vin", "n.º de quadro"], ["v_tara", "tara"], ["v_bruto", "peso bruto"], ["v_pn1", "pneus"]]
+        .filter(function (q) { return !$(q[0]).value; }).map(function (q) { return q[1]; });
+      $("duaAiTxt").innerHTML = "<b>" + n + " campos preenchidos.</b> Confirme-os no passo seguinte" + (r._fonte === "ocr" ? ", sobretudo o n.º de quadro, letra a letra" : "") + "." +
+        (falta.length ? " Não conseguimos ler: " + falta.join(", ") + ". Preencha-os à mão." : "");
+      if ($("v_vin").value) $("v_vin").closest(".field").querySelector("[data-err]").textContent = r._fonte === "ocr" ? "Confirme letra a letra com o certificado." : "";
       $("viatLead").textContent = "Preenchemos os campos a azul a partir do certificado. Confirme se estão certos.";
       duaBusy = false; btn.hidden = false; saveDraft(); refresh();
     }).catch(function (e) {
@@ -869,6 +915,7 @@ footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
     $("miss").hidden = true;
     document.querySelectorAll("section.step[data-step]").forEach(function (s) { s.hidden = Number(s.getAttribute("data-step")) !== cur; });
     if (cur === 4) aiStatus();
+    if (cur === 1 && window.OcrDua) OcrDua.preparar();
     refresh(); window.scrollTo(0, 0);
   }
   function refresh() {
