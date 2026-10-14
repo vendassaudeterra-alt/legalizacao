@@ -170,9 +170,18 @@ footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
 
   <!-- 1 CLIENTE -->
   <section class="step" data-step="0">
-    <h1>Os seus dados</h1>
-    <p class="lead">Vamos tratar da legalização da sua viatura. Começamos por identificar quem faz o pedido. Os dados ficam só na Ryrox e servem apenas para este processo.</p>
+    <h1>O seu pedido</h1>
+    <p class="lead">Vamos tratar da legalização da sua viatura. Diga-nos o que pretende e quem faz o pedido. Os dados ficam só na Ryrox e servem apenas para este processo.</p>
     <div class="card">
+      <h2>O que pretende</h2>
+      <div class="grid">
+        <div class="field"><label for="q_trab">Trabalho</label><select id="q_trab"><option value="">Escolher</option><option>Montar uma caixa nova</option><option>Trocar a caixa atual por outra</option><option>Alterar a caixa atual</option><option>Legalizar uma caixa já montada</option><option>Outro</option></select><span class="err" data-err="q_trab"></span></div>
+        <div class="field"><label for="q_caixa">Tipo de caixa</label><select id="q_caixa"><option value="">Escolher</option><option>Caixa fechada (furgão)</option><option>Caixa aberta com taipais</option><option>Caixa basculante</option><option>Caixa isotérmica ou frigorífica</option><option>Caixa com lona (cortinas)</option><option>Plataforma / porta-máquinas</option><option>Caixa com grua</option><option>Caixa para animais</option><option>Ainda não sei</option><option>Outra</option></select><span class="err" data-err="q_caixa"></span></div>
+        <div class="field wide"><label for="q_desc">Descreva o que pretende <small>(opcional)</small></label><textarea id="q_desc" rows="2" placeholder="Por exemplo: caixa de alumínio com 3 m, taipais rebatíveis, para transporte de material de obra."></textarea></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Os seus dados</h2>
       <div class="seg" role="radiogroup" aria-label="Tipo de cliente">
         <label><input type="radio" name="tipo" id="tipoP" value="particular" checked> Particular</label>
         <label><input type="radio" name="tipo" id="tipoE" value="empresa"> Empresa</label>
@@ -258,6 +267,7 @@ footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
       <div class="field"><label for="v_pn2">Pneus de trás <small>(X.2)</small></label><input type="text" id="v_pn2" class="mono" placeholder="185 R 14"><span class="err" data-err="v_pn2"></span></div>
       <div class="field"><label for="v_pns">Pneu suplente (medida)</label><input type="text" id="v_pns" class="mono" placeholder="Medida, ou «não tem»"><span class="err" data-err="v_pns"></span></div>
     </div><p class="muted" id="eeHelp">Se a distância entre eixos não estiver no certificado, mede-a no passo 6.</p></div>
+    <div class="note warn" id="vAvisos" hidden></div>
     <div class="card"><div class="field"><label for="v_z">Observações do certificado <small>(Z)</small></label><textarea id="v_z" rows="2"></textarea></div></div>
   </section>
 
@@ -397,7 +407,7 @@ footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
   "use strict";
   var $ = function (id) { return document.getElementById(id); };
   var NOAI = "Não foi possível preparar a leitura automática neste telemóvel. Preencha os dados da viatura no passo seguinte, com o certificado à sua frente.";
-  var STEPS = ["Cliente", "Certificado", "Viatura", "Inspeções", "Fotografias", "Medidas", "Enviar"];
+  var STEPS = ["Pedido", "Certificado", "Viatura", "Inspeções", "Fotografias", "Medidas", "Enviar"];
   var cur = 0;
   var sample = null, aiImages = false, duaBusy = false, duaReadFor = null, duaOn = true;
   var API = "https://dxhpsgyysphzaeatafit.supabase.co/functions/v1/legalizacao";
@@ -577,14 +587,14 @@ footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
         if (longSide < 1280 || shortSide < 720) errs.push("Imagem pequena demais (" + m.W + "×" + m.H + "). Tire a fotografia com a câmara do telemóvel, sem cortar.");
         if (m.H > m.W) errs.push("A fotografia está na vertical. Rode o telemóvel na horizontal para caber a viatura toda.");
       } else {
-        if (longSide < 1200) errs.push("Imagem pequena demais para se ler o documento (" + m.W + "×" + m.H + "). Use «Fotografar com guia» ou a câmara do telemóvel, sem reencaminhar pelo WhatsApp.");
+        if (longSide < 450) errs.push("Imagem pequena demais para se ler o documento (" + m.W + "×" + m.H + "). Use «Fotografar com guia» ou a câmara do telemóvel.");
         if (m.glare > 0.08) errs.push("Tem um reflexo forte que tapa o texto. Incline um pouco o documento ou afaste-se da luz direta.");
         else if (m.glare > 0.02) warns.push("Tem algum reflexo. Se uma parte não se ler, repita sem luz direta.");
-        if (m.sharp < 12) errs.push("Está desfocada. Segure o telemóvel parado, a uns 20 cm, e espere que a imagem fique nítida.");
+        if (m.sharp < 6) errs.push("Está desfocada. Segure o telemóvel parado, a uns 20 cm, e espere que a imagem fique nítida.");
       }
       if (m.mean < 45) errs.push("Muito escura. Fotografe de dia ou com mais luz.");
       else if (m.mean > 225) errs.push("Muito clara ou com reflexo forte. Mude de posição.");
-      if (m.sharp < (c.foto ? 18 : 30) && !(!c.foto && m.sharp < 12)) warns.push("Parece tremida ou desfocada. Se conseguir, repita com o telemóvel parado.");
+      if (c.foto && m.sharp < 18) warns.push("Parece tremida ou desfocada. Se conseguir, repita com o telemóvel parado.");
       if (c.foto) {
         s.hash = m.hash;
         FOTOS.forEach(function (o) {
@@ -825,6 +835,7 @@ footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
   function dadosPedido() {
     var a = num("m_a"), b = num("m_b"), pf = num("p_f"), pt = num("p_t"), prop = $("propN").checked;
     return {
+      pedido: { trabalho: val("q_trab"), caixa: val("q_caixa"), descricao: val("q_desc") },
       cliente: { tipo: $("tipoE").checked ? "Empresa" : "Particular", nome: val("c_nome"), nif: val("c_nif"), cc: val("c_cc"), morada: val("c_morada"), cp: val("c_cp"), localidade: val("c_loc"), telemovel: val("c_tel"), email: val("c_email"), proprietario: prop ? "Não" : "Sim", nome_proprietario: prop ? val("c_prop") : "" },
       viatura: { matricula: fmtMat(val("v_mat")), data_primeira: val("v_data1"), data_matricula: val("v_data"), matricula_anterior: val("v_matant"), importada: $("impS").checked ? "Sim" : "Não", marca: val("v_marca"), modelo: val("v_modelo"), denominacao: val("v_den"), vin: norm(val("v_vin")), homologacao: val("v_hom"),
         categoria: val("v_cat"), tipo: val("v_tipo"), carrocaria: val("v_carr"), cor: val("v_cor"), lugares: val("v_lug"), lugares_pe: val("v_lugp"), tara: val("v_tara"), peso_bruto: val("v_bruto"), peso_bruto_tecnico: val("v_brutot"), peso_conjunto: val("v_conj"),
@@ -859,7 +870,7 @@ footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
     lerCertificado(f.file, v.file, function (p, t) { $("duaAiTxt").textContent = (t || "A ler o certificado...") + " " + Math.round(p * 100) + "%"; }).then(function (r) {
       if (!r || !r.e_certificado || r.legivel === false) {
         f.status = v.status = "erro";
-        f.msgs = v.msgs = (r && r.problemas && r.problemas.length) ? r.problemas.map(String) : ["Não conseguimos ler o certificado. Fotografe de novo, mais perto e sem reflexos."];
+        f.msgs = v.msgs = (r && r.problemas && r.problemas.length) ? r.problemas.map(String) : ["Não conseguimos ler o certificado. Fotografe de novo com «Fotografar com guia»: mais perto e sem reflexos."];
         paintSlot("dua_f"); paintSlot("dua_v"); $("duaAiTxt").textContent = "Não foi possível ler. Corrija as fotografias ou preencha à mão no passo seguinte.";
         duaBusy = false; btn.hidden = false; refresh(); return;
       }
@@ -942,6 +953,9 @@ footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
       if (!/^[29]\d{8}$/.test(tel)) E.c_tel = "Número português com 9 algarismos.";
       if (val("c_email") && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(val("c_email"))) E.c_email = "Email inválido.";
       if ($("propN").checked && val("c_prop").length < 3) E.c_prop = "Escreva o nome do proprietário.";
+      if (!val("q_trab")) E.q_trab = "Escolha o trabalho que pretende.";
+      if (!val("q_caixa")) E.q_caixa = "Escolha o tipo de caixa.";
+      if (val("q_caixa") === "Outra" && val("q_desc").length < 5) E.q_caixa = "Descreva a caixa que pretende na caixa de texto.";
     }
     if (step === 2) {
       if (!matOk(val("v_mat"))) E.v_mat = "Matrícula inválida (ex.: 51-12-OZ).";
@@ -961,6 +975,24 @@ footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
       if (!val("v_rod")) E.v_rod = "Escolha simples ou duplo.";
       if (!val("v_pn1")) E.v_pn1 = "Indique a medida dos pneus.";
       if (!val("v_pns")) E.v_pns = "Indique a medida do suplente (ou escreva «não tem».)";
+      // coerência entre campos do certificado
+      var hoje = new Date().toISOString().slice(0, 10), d1 = val("v_data1"), d2 = val("v_data");
+      if (d2 && (d2 > hoje || d2 < "1950-01-01")) E.v_data = "Data impossível. Confirme no campo I do certificado.";
+      if (d1 && d1 > hoje) E.v_data1 = "Data no futuro. Confirme no campo B.";
+      else if (d1 && d2 && d1 > d2) E.v_data1 = "A 1.ª matrícula (B) não pode ser depois da matrícula em Portugal (I).";
+      var pb = num("v_bruto"), pt = num("v_brutot"), ef = num("v_ef"), et = num("v_et");
+      if (pb > 0 && val("v_cat") === "Ligeiro" && pb > 3500) E.v_cat = "Um ligeiro tem até 3500 kg de peso bruto. Confirme a categoria (J.1) ou o peso bruto (F.2).";
+      if (pb > 0 && val("v_cat") === "Pesado" && pb <= 3500) E.v_cat = "Um pesado tem mais de 3500 kg de peso bruto. Confirme a categoria (J.1) ou o peso bruto (F.2).";
+      if (pt > 0 && pb > 0 && pt < pb) E.v_brutot = "O peso bruto técnico (F.1) não pode ser menor do que o peso bruto (F.2).";
+      if (ef > 0 && et > 0 && pb > 0 && ef + et < pb) E.v_et = "A soma dos máximos por eixo (" + (ef + et) + " kg) é menor do que o peso bruto. Confirme N.1 e N.2.";
+      if (ef > 0 && pb > 0 && ef > pb) E.v_ef = "O máximo no eixo da frente não pode passar o peso bruto.";
+      if (et > 0 && pb > 0 && et > pb) E.v_et = "O máximo no eixo traseiro não pode passar o peso bruto.";
+      if (num("v_lug") > 60) E.v_lug = "Número de lugares impossível.";
+      if (val("v_cil") && !(num("v_cil") >= 50 && num("v_cil") <= 20000)) E.v_cil = "Cilindrada impossível (P.1, em cm³).";
+      if (val("v_pot") && !(num("v_pot") >= 1 && num("v_pot") <= 1000)) E.v_pot = "Potência impossível (P.2, em kW).";
+      var rePn = /^\d{3}\s*(\/\s*\d{2})?\s*Z?R\s*\d{2}(\.5)?(\s*C)?(\s.*)?$/i;
+      if (val("v_pn1") && !rePn.test(val("v_pn1"))) E.v_pn1 = "Formato de pneu estranho (ex.: 185 R 14 ou 215/65 R 16 C).";
+      if (val("v_pn2") && !rePn.test(val("v_pn2"))) E.v_pn2 = "Formato de pneu estranho (ex.: 185 R 14 ou 215/65 R 16 C).";
     }
     if (step === 3 && !$("facPend").checked) {
       if (!(num("p_f") > 0)) E.p_f = "Indique o peso da frente.";
@@ -982,6 +1014,21 @@ footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
       var st = FILES[id].status; return st !== "ok" && st !== "aviso";
     });
   }
+  // matrícula e n.º de quadro coerentes com o ano: só avisa
+  function avisosViatura() {
+    var out = [], ano = Number((val("v_data1") || val("v_data")).slice(0, 4)), m = norm(val("v_mat")), vin = norm(val("v_vin"));
+    if (ano && m.length === 6) {
+      var f = m.replace(/[A-Z]/g, "L").replace(/\d/g, "D");
+      var era = { DDDDLL: [1992, 2005], DDLLDD: [2005, 2020], LLDDDD: [1937, 1992], LLDDLL: [2020, 2100] }[f];
+      var b = val("v_data1"), imp = b && b !== val("v_data");
+      if (era && !imp && (ano < era[0] - 1 || ano > era[1] + 1)) out.push("A matrícula " + fmtMat(m) + " tem o formato de " + era[0] + "–" + era[1] + ", mas a data é de " + ano + ". Confirme a matrícula e a data.");
+    }
+    if (ano && vin.length === 17) {
+      var L = "ABCDEFGHJKLMNPRSTVWXY123456789", i = L.indexOf(vin[9]), y = 1980 + i;
+      if (i >= 0 && Math.abs(y - ano) > 2 && Math.abs(y + 30 - ano) > 2) out.push("O 10.º carácter do n.º de quadro («" + vin[9] + "») indica o ano " + (Math.abs(y + 30 - ano) < Math.abs(y - ano) ? y + 30 : y) + ". Confirme o n.º de quadro letra a letra.");
+    }
+    var box = $("vAvisos"); box.hidden = !out.length; box.innerHTML = out.length ? "<b>Confirme:</b> " + out.map(esc).join(" ") : "";
+  }
   function stepDone(i) { return i === 6 ? false : Object.keys(errsFor(i)).length === 0 && filesPending(i).length === 0; }
 
   var touched = {};
@@ -994,6 +1041,7 @@ footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
 
   // ---------- cálculos e resumo ----------
   function calcs() {
+    avisosViatura();
     var a = num("m_a"), b = num("m_b"), t = num("v_tara"), br = num("v_bruto"), pf = num("p_f"), pt = num("p_t");
     $("m_c").textContent = (a > 0 && b > a) ? fmt(b - a, "cm") : "—";
     $("v_cu").textContent = (t > 0 && br > t) ? fmt(br - t, "kg") : "—";
@@ -1003,7 +1051,7 @@ footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
   }
   function summary() {
     var rows = [
-      [0, "Dados do cliente", stepDone(0)],
+      [0, "O que pretende e dados do cliente", stepDone(0)],
       [1, "Certificado de matrícula (frente e verso)", stepDone(1)],
       [2, "Dados da viatura", stepDone(2)],
       [3, "Última inspeção periódica", ["ok", "aviso"].indexOf(FILES.insp.status) >= 0],
@@ -1059,7 +1107,7 @@ footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
   };
 
   // ---------- campos ----------
-  var TEXT = ["c_nome", "c_nif", "c_cc", "c_morada", "c_cp", "c_loc", "c_tel", "c_email", "c_prop", "v_mat", "v_data1", "v_data", "v_matant", "v_marca", "v_modelo", "v_den", "v_vin", "v_hom", "v_cat", "v_tipo", "v_carr", "v_cor", "v_lug", "v_lugp", "v_tara", "v_bruto", "v_brutot", "v_conj", "v_ef", "v_et", "v_o1", "v_o2", "v_cil", "v_pot", "v_comb", "v_eixos", "v_ee", "v_rod", "v_pn1", "v_pn2", "v_pns", "v_z", "p_f", "p_t", "m_a", "m_b", "m_ee", "obs"];
+  var TEXT = ["q_trab", "q_caixa", "q_desc", "c_nome", "c_nif", "c_cc", "c_morada", "c_cp", "c_loc", "c_tel", "c_email", "c_prop", "v_mat", "v_data1", "v_data", "v_matant", "v_marca", "v_modelo", "v_den", "v_vin", "v_hom", "v_cat", "v_tipo", "v_carr", "v_cor", "v_lug", "v_lugp", "v_tara", "v_bruto", "v_brutot", "v_conj", "v_ef", "v_et", "v_o1", "v_o2", "v_cil", "v_pot", "v_comb", "v_eixos", "v_ee", "v_rod", "v_pn1", "v_pn2", "v_pns", "v_z", "p_f", "p_t", "m_a", "m_b", "m_ee", "obs"];
   var KEY = "ryrox-legalizacao-rascunho";
   function saveDraft() { try { var d = {}; TEXT.forEach(function (k) { d[k] = $(k).value; }); d.tipo = $("tipoE").checked ? "e" : "p"; d.prop = $("propN").checked ? "n" : "s"; d.fac = $("facPend").checked; d.imp = $("impS").checked; localStorage.setItem(KEY, JSON.stringify(d)); } catch (e) {} }
   try {

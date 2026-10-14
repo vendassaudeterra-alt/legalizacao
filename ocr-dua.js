@@ -179,7 +179,7 @@ var OcrDua = (function () {
   }
 
   function parseVerso(U) {
-    U = U.toUpperCase().replace(/[|]/g, " ");
+    U = U.toUpperCase().replace(/[|]/g, " ").replace(/\b([A-Z])[^A-Z0-9\s]{1,3}\s?(\d)\b/g, "$1.$2");
     var r = {}, x;
     for (var i = 0; i < MARCAS.length; i++) { var re = new RegExp("\\b" + MARCAS[i].replace("-", "[- ]?") + "\\b"); if (re.test(U)) { r.marca = MARCAS[i]; break; } }
     if (!r.marca && (x = m(U, /\bD[.,]\s*3?1\s+([A-Z][A-Z\- ]{1,30})/))) r.marca = clean(x[1].split(/\s{2,}|\n/)[0]);
@@ -195,6 +195,8 @@ var OcrDua = (function () {
     var cat = m(U, /\b(LIGEIRO|PESADO)\b/); if (cat) r.categoria = cat[1] === "LIGEIRO" ? "Ligeiro" : "Pesado";
     var tipo = m(U, /\b(MERCADORIAS|PASSAGEIROS|MISTO|ESPECIAL|REBOQUE)\b/); if (tipo) r.tipo = tipo[1][0] + tipo[1].slice(1).toLowerCase();
     if ((x = m(U, /\b[J1I][.,]\s*3\s+([A-Z][A-ZÇÃÕÁÉÍÓÚÂÊÔ ]{2,30})/))) r.carrocaria = clean(x[1].split(/\s{2,}/)[0]);
+    if (!r.carrocaria && (x = m(U, /\b(CAIXA ABERTA|CAIXA FECHADA|FECHADA|ABERTA|FURG[AÃ]O|BASCULANTE|ISOT[EÉ]RMIC[AO]|FRIGOR[IÍ]FIC[AO]|TAIPAIS|ESTRADO|PLATAFORMA|CHASSIS[- ]CABINA|CISTERNA|BETONEIRA|PORTA[- ]M[AÁ]QUINAS|TRATOR|COMERCIAL|CAIXA)\b/))) r.carrocaria = x[1];
+    if (r.carrocaria) r.carrocaria = r.carrocaria.charAt(0) + r.carrocaria.slice(1).toLowerCase();
     if ((x = m(U, /K[.,]\s*1\s+(\d{6,})/))) r.homologacao = x[1];
     else if ((x = m(U, /\bK\s+([A-Z0-9*]{5,})/))) r.homologacao = clean(x[1]);
     if ((x = m(U, /N[.,]\s*5\s+(\d{3,5})\s*[:;.]\s*(\d{3,5})(?:\s*[:;.]\s*(\d{3,5}))?/)) || (x = m(U, /\b(\d{4,5})\s*[:;]\s*(\d{4,5})(?:\s*[:;]\s*(\d{4,5}))?/))) {
