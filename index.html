@@ -130,6 +130,24 @@ button:focus-visible, .seg label:focus-within { outline: 3px solid var(--blue); 
 .modal .box { background: var(--card); border-radius: 8px; padding: 20px; width: min(420px, 100%); display: grid; gap: 12px; }
 .modal .err { color: var(--bad); font-size: 13px; min-height: 1em; margin: 0; }
 .modal .row { display: flex; gap: 10px; justify-content: flex-end; }
+.slot .cam { margin: 0 12px 10px; font: 600 14px var(--body); background: var(--navy); color: #fff; border: 0; border-radius: 5px; padding: 9px 12px; cursor: pointer; }
+.crop { display: grid; gap: 4px; margin-top: 4px; }
+.crop span { font-size: 12px; color: var(--muted); }
+.crop img { max-width: 100%; border: 1px solid var(--line); border-radius: 3px; background: #fff; }
+.vinok { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; margin-top: 6px; }
+#cam { position: fixed; inset: 0; background: #000; z-index: 50; display: grid; grid-template-rows: auto 1fr auto; color: #fff; }
+#cam .top { padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 8px; display: grid; gap: 2px; }
+#cam .top b { font: 700 18px var(--display); letter-spacing: .03em; }
+#cam .top span { font-size: 13px; color: #c9d3e3; }
+#cam .stage { position: relative; overflow: hidden; }
+#cam video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+#cam .frame { position: absolute; border: 3px solid #f5b83d; border-radius: 10px; box-shadow: 0 0 0 9999px rgba(0, 0, 0, .5); transition: border-color .2s; }
+#cam .frame.ok { border-color: #3ccf7a; }
+#cam .estado { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); background: rgba(0, 0, 0, .7); padding: 7px 14px; border-radius: 20px; font: 600 15px var(--body); white-space: nowrap; max-width: 92%; overflow: hidden; text-overflow: ellipsis; }
+#cam .bot { display: flex; gap: 12px; justify-content: space-between; align-items: center; padding: 12px 16px calc(14px + env(safe-area-inset-bottom, 0px)); }
+#cam .shot { width: 70px; height: 70px; border-radius: 50%; border: 5px solid #fff; background: #f5b83d; cursor: pointer; }
+#cam .shot.ok { background: #3ccf7a; }
+#cam .bot button.txt { background: none; border: 1px solid #5b6678; color: #fff; border-radius: 5px; padding: 10px 14px; font: 600 15px var(--body); cursor: pointer; }
 footer.bar { background: var(--card); border-top: 1px solid var(--line); padding: 14px 16px 24px; }
 footer.bar .in { max-width: 728px; margin: 0 auto; display: flex; gap: 10px; justify-content: space-between; align-items: center; }
 footer.bar .miss { max-width: 728px; margin: 0 auto 8px; background: var(--bad-soft); color: var(--bad); border-radius: 4px; padding: 8px 12px; font-size: 14px; display: grid; gap: 4px; }
@@ -198,7 +216,7 @@ footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
     <h1>Dados da viatura</h1>
     <p class="lead" id="viatLead">Os campos seguem o certificado de matrícula (o código de cada campo está entre parênteses). Com a leitura automática ficam preenchidos a azul: só tem de confirmar.</p>
     <div class="card"><h2>Identificação</h2><div class="grid">
-      <div class="field"><label for="v_mat">Matrícula <small>(A)</small></label><input type="text" id="v_mat" class="mono" placeholder="00-AA-00"><span class="err" data-err="v_mat"></span></div>
+      <div class="field"><label for="v_mat">Matrícula <small>(A)</small></label><input type="text" id="v_mat" class="mono" placeholder="00-AA-00"><span class="err" data-err="v_mat"></span><div class="crop" id="cropMat" hidden><span>No seu certificado:</span><img alt="Matrícula recortada do certificado"></div></div>
       <div class="field"><label for="v_data1">Data da 1.ª matrícula <small>(B)</small></label><input type="date" id="v_data1"><span class="err" data-err="v_data1"></span></div>
       <div class="field"><label for="v_data">Data da matrícula em Portugal <small>(I)</small></label><input type="date" id="v_data"><span class="err" data-err="v_data"></span></div>
       <div class="field"><label for="v_matant">Matrícula anterior</label><input type="text" id="v_matant" class="mono" placeholder="Se tiver"><span class="err" data-err="v_matant"></span></div>
@@ -206,7 +224,7 @@ footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
       <div class="field"><label for="v_marca">Marca <small>(D.1)</small></label><input type="text" id="v_marca"><span class="err" data-err="v_marca"></span></div>
       <div class="field"><label for="v_modelo">Modelo / tipo <small>(D.2)</small></label><input type="text" id="v_modelo"><span class="err" data-err="v_modelo"></span></div>
       <div class="field"><label for="v_den">Denominação comercial <small>(D.3)</small></label><input type="text" id="v_den"><span class="err" data-err="v_den"></span></div>
-      <div class="field wide"><label for="v_vin">N.º de quadro <small>(E)</small></label><input type="text" id="v_vin" class="mono"><span class="err" data-err="v_vin"></span></div>
+      <div class="field wide"><label for="v_vin">N.º de quadro <small>(E)</small></label><input type="text" id="v_vin" class="mono"><span class="err" data-err="v_vin"></span><div class="crop" id="cropVin" hidden><span>No seu certificado:</span><img alt="N.º de quadro recortado do certificado"></div><label class="vinok" id="vinOkBox" hidden><input type="checkbox" id="vinOk"> Comparei letra a letra e o n.º de quadro está igual ao do certificado.</label></div>
       <div class="field"><label for="v_hom">N.º de homologação <small>(K / K.1)</small></label><input type="text" id="v_hom" class="mono"><span class="err" data-err="v_hom"></span></div>
     </div></div>
     <div class="card"><h2>Tipo e carroçaria</h2><div class="grid">
@@ -351,6 +369,11 @@ footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
   </section>
 </main>
 
+<div id="cam" hidden role="dialog" aria-modal="true" aria-labelledby="camTitulo">
+  <div class="top"><b id="camTitulo"></b><span id="camDica">Encaixe o documento dentro da moldura.</span></div>
+  <div class="stage" id="camStage"><video id="camVideo" playsinline muted autoplay></video><div class="frame" id="camFrame"></div><div class="estado" id="camEstado">A abrir a câmara...</div></div>
+  <div class="bot"><button type="button" class="txt" id="camFechar">Cancelar</button><button type="button" class="shot" id="camShot" aria-label="Fotografar"></button><button type="button" class="txt" id="camAuto">Automático: sim</button></div>
+</div>
 <div class="modal" id="modal" hidden>
   <div class="box" role="dialog" aria-modal="true" aria-labelledby="mTitle">
     <h2 id="mTitle"></h2>
@@ -473,9 +496,11 @@ footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
       el.innerHTML = '<div class="hd"><b>' + c.nome + '</b><span class="chip" data-chip></span></div>' +
         '<label class="view"><input type="file" id="file_' + id + '" accept="' + accept + '">' +
         '<span data-view>' + (c.foto ? guideSVG(c) : docIcon()) + '</span><span class="add" data-add>Tirar ou escolher</span></label>' +
+        (!c.foto && navigator.mediaDevices && navigator.mediaDevices.getUserMedia ? '<button type="button" class="cam" data-cam>Fotografar com guia</button>' : "") +
         '<div class="res" data-res></div>';
       $(c.grp).appendChild(el);
       el.querySelector("input").addEventListener("change", function (e) { if (e.target.files[0]) takeFile(id, e.target.files[0]); e.target.value = ""; });
+      var cb = el.querySelector("[data-cam]"); if (cb) cb.addEventListener("click", function () { abrirCamara(id); });
       paintSlot(id);
     });
   }
@@ -516,7 +541,8 @@ footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
     var cx = cv.getContext("2d", { willReadFrequently: true }); cx.drawImage(bmp, 0, 0, w, h);
     var d = cx.getImageData(0, 0, w, h).data, g = new Float32Array(w * h), sum = 0, i;
     for (i = 0; i < w * h; i++) { g[i] = .299 * d[i * 4] + .587 * d[i * 4 + 1] + .114 * d[i * 4 + 2]; sum += g[i]; }
-    var mean = sum / (w * h), n = 0, ls = 0, ls2 = 0;
+    var mean = sum / (w * h), n = 0, ls = 0, ls2 = 0, br = 0;
+    for (i = 0; i < w * h; i++) if (g[i] > 248) br++;
     for (var y = 1; y < h - 1; y++) for (var x = 1; x < w - 1; x++) {
       var k = y * w + x, lap = 4 * g[k] - g[k - 1] - g[k + 1] - g[k - w] + g[k + w];
       ls += lap; ls2 += lap * lap; n++;
@@ -528,7 +554,7 @@ footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
     var td = tc.getImageData(0, 0, 8, 8).data, px = [], m2 = 0;
     for (i = 0; i < 64; i++) { px[i] = td[i * 4] + td[i * 4 + 1] + td[i * 4 + 2]; m2 += px[i]; }
     m2 /= 64;
-    return { W: W, H: H, mean: mean, sharp: lapVar, hash: px.map(function (v) { return v > m2 ? 1 : 0; }) };
+    return { W: W, H: H, mean: mean, sharp: lapVar, glare: br / (w * h), hash: px.map(function (v) { return v > m2 ? 1 : 0; }) };
   }
   function ham(a, b) { var c = 0; for (var i = 0; i < 64; i++) if (a[i] !== b[i]) c++; return c; }
 
@@ -550,10 +576,15 @@ footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
       if (c.foto) {
         if (longSide < 1280 || shortSide < 720) errs.push("Imagem pequena demais (" + m.W + "×" + m.H + "). Tire a fotografia com a câmara do telemóvel, sem cortar.");
         if (m.H > m.W) errs.push("A fotografia está na vertical. Rode o telemóvel na horizontal para caber a viatura toda.");
-      } else if (longSide < 1000) errs.push("Imagem pequena demais para se ler o documento. Aproxime-se e volte a fotografar.");
+      } else {
+        if (longSide < 1200) errs.push("Imagem pequena demais para se ler o documento (" + m.W + "×" + m.H + "). Use «Fotografar com guia» ou a câmara do telemóvel, sem reencaminhar pelo WhatsApp.");
+        if (m.glare > 0.08) errs.push("Tem um reflexo forte que tapa o texto. Incline um pouco o documento ou afaste-se da luz direta.");
+        else if (m.glare > 0.02) warns.push("Tem algum reflexo. Se uma parte não se ler, repita sem luz direta.");
+        if (m.sharp < 12) errs.push("Está desfocada. Segure o telemóvel parado, a uns 20 cm, e espere que a imagem fique nítida.");
+      }
       if (m.mean < 45) errs.push("Muito escura. Fotografe de dia ou com mais luz.");
       else if (m.mean > 225) errs.push("Muito clara ou com reflexo forte. Mude de posição.");
-      if (m.sharp < (c.foto ? 18 : 30)) warns.push("Parece tremida ou desfocada. Se conseguir, repita com o telemóvel parado.");
+      if (m.sharp < (c.foto ? 18 : 30) && !(!c.foto && m.sharp < 12)) warns.push("Parece tremida ou desfocada. Se conseguir, repita com o telemóvel parado.");
       if (c.foto) {
         s.hash = m.hash;
         FOTOS.forEach(function (o) {
@@ -642,6 +673,87 @@ footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
       if ($(from).closest(".field").classList.contains("ai")) $(to).closest(".field").classList.add("ai");
     }
   }
+
+  // ---------- câmara com guia para documentos ----------
+  var cam = { stream: null, id: null, timer: null, ratio: 1.585, bons: 0, auto: true, rect: null };
+  function abrirCamara(id) {
+    cam.id = id; cam.bons = 0;
+    cam.ratio = (id === "dua_f" || id === "dua_v") ? 85.6 / 54 : 210 / 297;
+    $("camTitulo").textContent = FILES[id].cfg.nome;
+    $("camDica").textContent = cam.ratio > 1 ? "Pouse o cartão numa mesa e encaixe-o na moldura. Telemóvel na horizontal ajuda." : "Pouse a folha numa mesa e encaixe-a na moldura.";
+    $("camEstado").textContent = "A abrir a câmara...";
+    $("cam").hidden = false; document.body.style.overflow = "hidden";
+    navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: "environment" }, width: { ideal: 3840 }, height: { ideal: 2160 } } }).then(function (st) {
+      cam.stream = st; var v = $("camVideo"); v.srcObject = st;
+      var p = v.play(); if (p && p.catch) p.catch(function () {});
+      v.onloadedmetadata = posMoldura;
+      cam.timer = setInterval(verCamara, 350);
+    }).catch(function () {
+      fecharCamara();
+      var s = FILES[id]; s.msgs = ["Não foi possível abrir a câmara (sem autorização ou sem câmara). Use «Tirar ou escolher»."]; paintSlot(id);
+    });
+  }
+  function fecharCamara() {
+    clearInterval(cam.timer); cam.timer = null;
+    if (cam.stream) cam.stream.getTracks().forEach(function (t) { t.stop(); });
+    cam.stream = null; $("camVideo").srcObject = null; $("cam").hidden = true; document.body.style.overflow = "";
+  }
+  // a moldura ocupa 86% da imagem visível, com a forma do documento
+  function posMoldura() {
+    var v = $("camVideo"), st = $("camStage"), vw = v.videoWidth, vh = v.videoHeight;
+    if (!vw) return;
+    var cw = st.clientWidth, ch = st.clientHeight, k = Math.min(cw / vw, ch / vh), dw = vw * k, dh = vh * k, dx = (cw - dw) / 2, dy = (ch - dh) / 2;
+    var fw = dw * 0.86, fh = fw / cam.ratio;
+    if (fh > dh * 0.86) { fh = dh * 0.86; fw = fh * cam.ratio; }
+    var fx = dx + (dw - fw) / 2, fy = dy + (dh - fh) / 2, fr = $("camFrame");
+    fr.style.left = fx + "px"; fr.style.top = fy + "px"; fr.style.width = fw + "px"; fr.style.height = fh + "px";
+    cam.rect = { sx: (fx - dx) / k, sy: (fy - dy) / k, sw: fw / k, sh: fh / k };
+  }
+  window.addEventListener("resize", function () { if (!$("cam").hidden) posMoldura(); });
+  function verCamara() {
+    var v = $("camVideo");
+    if (!v.videoWidth || !cam.rect) { posMoldura(); return; }
+    var R = cam.rect, w = 360, h = Math.round(w * R.sh / R.sw), c = document.createElement("canvas"); c.width = w; c.height = h;
+    var x = c.getContext("2d", { willReadFrequently: true }); x.drawImage(v, R.sx, R.sy, R.sw, R.sh, 0, 0, w, h);
+    var d = x.getImageData(0, 0, w, h).data, g = new Float32Array(w * h), sum = 0, br = 0, i;
+    var claro = 0;
+    for (i = 0; i < w * h; i++) { g[i] = Math.min(d[i * 4], d[i * 4 + 1], d[i * 4 + 2]); sum += g[i]; if (g[i] > 248) br++; if (g[i] > 130) claro++; }
+    var ls = 0, ls2 = 0, n = 0, edges = 0;
+    for (var y = 1; y < h - 1; y++) for (var xx = 1; xx < w - 1; xx++) { var q = y * w + xx, l = 4 * g[q] - g[q - 1] - g[q + 1] - g[q - w] - g[q + w]; ls += l; ls2 += l * l; n++; if (Math.abs(g[q] - g[q - w]) > 45) edges++; }
+    var mean = sum / (w * h), sharp = ls2 / n - Math.pow(ls / n, 2), glare = br / (w * h), texto = edges / n, enche = claro / (w * h);
+    var msg, ok = false, effW = R.sw;
+    if (mean < 55) msg = "Pouca luz: aproxime-se de uma janela";
+    else if (glare > 0.03) msg = "Reflexo: incline um pouco o documento";
+    else if (enche < 0.3 && texto < 0.008) msg = "Encaixe o documento na moldura";
+    else if (enche < 0.55) msg = "Aproxime-se: o documento deve encher a moldura";
+    else if (sharp < 450 || texto < 0.008) msg = "A focar... segure o telemóvel parado";
+    else if (effW < 1000) msg = "A câmara tem pouca resolução: aproxime-se o mais possível";
+    else { ok = true; msg = cam.auto ? "Ótimo, não mexa..." : "Pronto: toque no botão"; }
+    if (cam.ratio > 1 && v.videoHeight > v.videoWidth && !ok) msg += " (rode o telemóvel na horizontal)";
+    cam.bons = ok ? cam.bons + 1 : 0;
+    $("camEstado").textContent = msg;
+    $("camFrame").classList.toggle("ok", ok); $("camShot").classList.toggle("ok", ok);
+    if (cam.auto && cam.bons >= 4) disparar();
+  }
+  function disparar() {
+    var v = $("camVideo"), R = cam.rect, id = cam.id;
+    if (!v.videoWidth || !R) return;
+    clearInterval(cam.timer); cam.timer = null;
+    $("camEstado").textContent = "A guardar...";
+    // margem de 3% à volta da moldura para não cortar letras
+    var mx = R.sw * 0.03, my = R.sh * 0.03, sx = Math.max(0, R.sx - mx), sy = Math.max(0, R.sy - my);
+    var sw = Math.min(v.videoWidth - sx, R.sw + 2 * mx), sh = Math.min(v.videoHeight - sy, R.sh + 2 * my);
+    var c = document.createElement("canvas"); c.width = Math.round(sw); c.height = Math.round(sh);
+    c.getContext("2d").drawImage(v, sx, sy, sw, sh, 0, 0, c.width, c.height);
+    c.toBlob(function (b) {
+      fecharCamara();
+      if (b) takeFile(id, new File([b], id + ".jpg", { type: "image/jpeg" }));
+    }, "image/jpeg", 0.93);
+  }
+  $("camShot").addEventListener("click", disparar);
+  $("camFechar").addEventListener("click", fecharCamara);
+  $("camAuto").addEventListener("click", function () { cam.auto = !cam.auto; this.textContent = "Automático: " + (cam.auto ? "sim" : "não"); cam.bons = 0; });
+
   function lerFicha(id) {
     var s = FILES[id], fileAtStart = s.file, base = s.status;
     s.msgs = s.msgs.filter(function (m) { return !/^Verificação básica/.test(m); }).concat(["A ler a ficha..."]); paintSlot(id);
@@ -770,13 +882,21 @@ footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
       if (r.pneus_tras && !$("v_pns").value) $("v_pns").placeholder = "Ex.: " + r.pneus_tras + " (confirme na viatura)";
       impAuto(); syncEE("v_ee");
       $("eeHelp").textContent = ee > 0 ? "Distância entre eixos lida do certificado. Já está preenchida no passo 6." : "O certificado não indica a distância entre eixos. Mede-a no passo 6.";
-      f.status = v.status = "ok"; f.msgs = v.msgs = ["Lido por IA."];
+      f.status = v.status = "ok"; f.msgs = v.msgs = [r._fonte === "ocr" ? "Lido no telemóvel" + (r._conf ? " (confiança " + r._conf + "%)." : ".") : "Lido automaticamente."];
       paintSlot("dua_f"); paintSlot("dua_v");
       var falta = [["v_mat", "matrícula"], ["v_data", "data da matrícula"], ["v_marca", "marca"], ["v_modelo", "modelo"], ["v_vin", "n.º de quadro"], ["v_tara", "tara"], ["v_bruto", "peso bruto"], ["v_pn1", "pneus"]]
         .filter(function (q) { return !$(q[0]).value; }).map(function (q) { return q[1]; });
       $("duaAiTxt").innerHTML = "<b>" + n + " campos preenchidos.</b> Confirme-os no passo seguinte" + (r._fonte === "ocr" ? ", sobretudo o n.º de quadro, letra a letra" : "") + "." +
-        (falta.length ? " Não conseguimos ler: " + falta.join(", ") + ". Preencha-os à mão." : "");
-      if ($("v_vin").value) $("v_vin").closest(".field").querySelector("[data-err]").textContent = r._fonte === "ocr" ? "Confirme letra a letra com o certificado." : "";
+        (falta.length ? " Não conseguimos ler: " + falta.join(", ") + (falta.length === 1 ? ". Preencha-o à mão." : ". Preencha-os à mão.") : "");
+      if (r._crop_mat) { $("cropMat").querySelector("img").src = r._crop_mat; $("cropMat").hidden = false; }
+      if (r._crop_vin) { $("cropVin").querySelector("img").src = r._crop_vin; $("cropVin").hidden = false; }
+      if (r._fonte === "ocr" && $("v_vin").value) { $("vinOkBox").hidden = false; $("vinOk").checked = false; }
+      // leitura fraca: pedir nova fotografia com o guia
+      if (r._fonte === "ocr" && (r._conf < 55 || n < 10)) {
+        f.status = v.status = "aviso";
+        f.msgs = v.msgs = ["A leitura ficou fraca" + (r._conf ? " (confiança " + r._conf + "%)" : "") + ". Para ler melhor, repita com «Fotografar com guia»: cartão dentro da moldura, sem reflexos."];
+        paintSlot("dua_f"); paintSlot("dua_v");
+      }
       $("viatLead").textContent = "Preenchemos os campos a azul a partir do certificado. Confirme se estão certos.";
       duaBusy = false; btn.hidden = false; saveDraft(); refresh();
     }).catch(function (e) {
@@ -830,6 +950,7 @@ footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
       if (!val("v_modelo")) E.v_modelo = "Indique o modelo.";
       var vin = norm(val("v_vin"));
       if (vin.length !== 17 || /[IOQ]/.test(vin)) E.v_vin = "O n.º de quadro tem 17 caracteres (sem I, O nem Q).";
+      else if (!$("vinOkBox").hidden && !$("vinOk").checked) E.v_vin = "Compare com o certificado e confirme o n.º de quadro.";
       if (!val("v_cat")) E.v_cat = "Escolha a categoria.";
       if (!val("v_tipo")) E.v_tipo = "Escolha o tipo.";
       if (!val("v_carr")) E.v_carr = "Indique a carroçaria.";
@@ -964,6 +1085,7 @@ footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
   ["tipoP", "tipoE", "propS", "propN"].forEach(function (k) { $(k).addEventListener("change", function () { tipoPaint(); saveDraft(); refresh(); }); });
   $("facPend").addEventListener("change", function () { paintSlot("fac"); saveDraft(); refresh(); });
   $("rgpd").addEventListener("change", summary);
+  $("vinOk").addEventListener("change", function () { refresh(); });
   $("duaRead").addEventListener("click", readDua);
   $("send").addEventListener("click", function () {
     var btn = this; btn.disabled = true; $("sendTxt").className = "muted"; $("sendTxt").textContent = "A preparar as fotografias...";

@@ -67,6 +67,9 @@ var OcrDua = (function () {
     return big;
   }
 
+  function recorte(c, bb) {
+    try { return crop(c, bb, Math.min(2, 900 / Math.max(1, bb.x1 - bb.x0))).toDataURL("image/jpeg", 0.85); } catch (e) { return null; }
+  }
   function crop(c, bb, scale) {
     var mx = (bb.x1 - bb.x0) * 0.06 + 6, my = (bb.y1 - bb.y0) * 0.35 + 6;
     var x0 = Math.max(0, bb.x0 - mx), y0 = Math.max(0, bb.y0 - my), w = Math.min(c.width, bb.x1 + mx) - x0, h = Math.min(c.height, bb.y1 + my) - y0;
@@ -86,7 +89,7 @@ var OcrDua = (function () {
     }).then(function (r) {
       var words = [];
       (r.data.blocks || []).forEach(function (b) { (b.paragraphs || []).forEach(function (p) { (p.lines || []).forEach(function (l) { (l.words || []).forEach(function (wd) { words.push({ text: wd.text, bbox: wd.bbox }); }); }); }); });
-      return { text: r.data.text || "", words: words };
+      return { text: r.data.text || "", words: words, conf: r.data.confidence || 0 };
     });
   }
 
@@ -155,7 +158,7 @@ var OcrDua = (function () {
   }
   function num(v) { if (v == null) return null; if (/^\s*[Xx×]\s*$/.test(v)) return null; var s = String(v).replace(/[OoQD]/g, "0").replace(/[Il|]/g, "1").replace(/[^\d.,]/g, "").replace(",", "."); if (!s) return null; var n = Number(s); return isFinite(n) ? n : null; }
   function m(t, re) { return t.match(re); }
-  function clean(v) { if (!v) return null; v = v.replace(/\s{2,}/g, " ").trim(); return (!v || /^[XxK×]{1,2}$/.test(v)) ? null : v; }
+  function clean(v) { if (!v) return null; v = v.replace(/\s{2,}/g, " ").trim(); var core = v.replace(/[^A-Za-z0-9×]/g, ""); return (!core || /^[XxK×]{1,3}$/.test(core)) ? null : v; }
 
   // ---------- leitura dos campos ----------
   function datasFrente(U) {
@@ -242,14 +245,15 @@ var OcrDua = (function () {
   // Lê as duas faces. onProgress(0..1, texto) para mostrar o andamento.
   function ler(frente, verso, onProgress) { return enfileirar(function () { return lerAgora(frente, verso, onProgress); }); }
   function lerAgora(frente, verso, onProgress) {
-    var N = 5, step = 0, bf, bv, F1, F2, V1, V2, r = {}, ano = null;
+    var N = 5, step = 0, bf, bv, gF, gV, F1, F2, V1, V2, r = {}, ano = null;
     function prog(t) { onProgress && onProgress(step / N, t); return function (p) { onProgress && onProgress((step + p) / N, t); }; }
     return Promise.all([bitmap(frente), bitmap(verso)]).then(function (b) {
       bf = normalize(b[0]); bv = normalize(b[1]);
       return ocr(prep(bf, true), {}, prog("A ler a frente..."));
     }).then(function (o) {
       F1 = o; step = 1;
-      return ocr(prep(bf, false), {}, prog("A confirmar a matrícula..."));
+      gF = prep(bf, false);
+      return ocr(gF, {}, prog("A confirmar a matrícula..."));
     }).then(function (o) {
       F2 = o; step = 2;
       var datas = datasFrente((F1.text + "\n" + F2.text).toUpperCase());
@@ -260,6 +264,9 @@ var OcrDua = (function () {
       [F1.text, F2.text].forEach(function (t) { var p = matricula(t.toUpperCase(), ano); if (p) { if (!votos[p]) { votos[p] = 0; ordem.push(p); } votos[p]++; } });
       ordem.sort(function (a, b) { return votos[b] - votos[a]; });
       if (ordem[0]) r.matricula = ordem[0];
+      // recorte da matrícula tal como está no certificado
+      var wm = F2.words.concat(F1.words).filter(function (w) { return /^[0-9A-Z]{2}[-–.][0-9A-Z]{2}[-–.][0-9A-Z]{2}/i.test(w.text.trim()); })[0];
+      if (wm) r._crop_mat = recorte(gF, wm.bbox);
       return ocr(prep(bv, true), {}, prog("A ler o verso..."));
     }).then(function (o) {
       V1 = o; step = 3;
@@ -274,13 +281,16 @@ var OcrDua = (function () {
       var cand = V1.words.filter(function (w) { return w.text.replace(/[^A-Za-z0-9]/g, "").length >= 14; })
         .sort(function (a, b) { return b.text.length - a.text.length; })[0];
       if (!cand) return null;
-      return ocr(crop(prep(bv, false), cand.bbox, 2), { psm: "7", white: "ABCDEFGHJKLMNPRSTUVWXYZ0123456789" }, prog("A ler o n.º de quadro..."))
+      gV = prep(bv, false);
+      r._crop_vin = recorte(gV, cand.bbox);
+      return ocr(crop(gV, cand.bbox, 2), { psm: "7", white: "ABCDEFGHJKLMNPRSTUVWXYZ0123456789" }, prog("A ler o n.º de quadro..."))
         .then(function (o2) { return [o2.text, cand.text]; });
     }).then(function (vt) {
       step = 5;
       if (vt) { r.vin = vinFrom(vt[0], r.marca, ano) || vinFrom(vt[1], r.marca, ano); r._vin = vt; }
       onProgress && onProgress(1, "Leitura concluída");
       r._t = { f1: F1.text, f2: F2.text, v: V1.text, v2: V2.text };
+      r._conf = Math.round((F1.conf + V1.conf) / 2);
       return check(r);
     });
   }
