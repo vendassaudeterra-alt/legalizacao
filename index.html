@@ -9,6 +9,7 @@
 <script src="ocr-dua.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js" defer></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
 <style>
@@ -180,6 +181,36 @@ footer.bar .in { max-width: 728px; margin: 0 auto; display: flex; gap: 10px; jus
 footer.bar .miss { max-width: 728px; margin: 0 auto 8px; background: var(--bad-soft); color: var(--bad); border-radius: 4px; padding: 8px 12px; font-size: 14px; display: grid; gap: 4px; }
 footer.bar .miss button { all: unset; cursor: pointer; text-decoration: underline; color: var(--navy); font-weight: 600; }
 footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
+/* medidas por cores: cada caixa tem a cor da cota no desenho */
+.vista { margin: 0; display: grid; gap: 8px; }
+.vista figcaption { font: 700 21px var(--display); letter-spacing: .02em; color: var(--navy); }
+.vista img { display: block; width: 100%; height: auto; border-radius: 4px; background: #fff; }
+.vista.tras img { max-width: 440px; justify-self: center; }
+.cx { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.cx.two { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 560px; justify-self: center; width: 100%; }
+@media (max-width: 600px) { .cx { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 360px) { .cx, .cx.two { grid-template-columns: minmax(0, 1fr); } }
+.mb { --c: #1a6fe0; border: 1.5px solid var(--c); border-radius: 6px; overflow: hidden; background: #fff; display: grid; align-content: start; min-width: 0; }
+.mb > label { background: var(--c); color: #fff; font: 600 14px/1.2 var(--body); padding: 7px 10px; display: flex; gap: 8px; align-items: center; min-height: 44px; }
+.mb > label b { flex: 0 0 auto; width: 24px; height: 24px; border-radius: 50%; display: inline-grid; place-items: center; background: #fff; color: var(--c); font: 700 13px var(--mono); }
+.mb .unit { border: 0; border-radius: 0; background: #eef2f6; }
+.mb .unit:focus-within { box-shadow: inset 0 0 0 2px var(--c); }
+.mb .unit input { text-align: center; }
+.mb .unit span { background: transparent; border: 0; }
+.mb .err { padding: 0 10px; color: var(--bad); font-size: 12.5px; line-height: 1.3; }
+.mb .err:not(:empty) { padding: 4px 10px 6px; }
+.mb.x { --c: #3c4654; } .mb.c { --c: #e8641b; } .mb.d { --c: #17803d; }
+.mb.ai .unit { background: var(--blue-soft); }
+.legend .tag.x { background: #3c4654; } .legend .tag.c { background: #e8641b; } .legend .tag.d { background: #17803d; }
+/* documentos e custos */
+.docbtns { display: flex; flex-wrap: wrap; gap: 10px; }
+.passos { margin: 0; padding-left: 20px; display: grid; gap: 4px; font-size: 15px; }
+table.custos { width: 100%; border-collapse: collapse; font-size: 15px; }
+table.custos td { padding: 9px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.custos td + td { text-align: right; font-family: var(--mono); white-space: nowrap; padding-left: 14px; }
+table.custos tr.sub td { color: var(--muted); font-size: 14px; }
+table.custos tr.tot td { border-bottom: 0; border-top: 2px solid var(--navy); font-weight: 700; font-size: 17px; color: var(--navy); }
+.iban { font: 500 18px var(--mono); letter-spacing: .04em; color: var(--navy); background: var(--blue-soft); border-radius: 4px; padding: 10px 12px; word-break: break-word; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 </head>
@@ -217,6 +248,9 @@ footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
         <div class="field wide"><label for="c_nome" id="lblNome">Nome completo</label><input type="text" id="c_nome" autocomplete="name"><span class="err" data-err="c_nome"></span></div>
         <div class="field"><label for="c_nif">NIF</label><input type="text" id="c_nif" class="mono" inputmode="numeric" maxlength="9"><span class="err" data-err="c_nif"></span></div>
         <div class="field"><label for="c_cc" id="lblCC">N.º do Cartão de Cidadão</label><input type="text" id="c_cc" class="mono"><small id="ccHelp">Ou de outro documento de identificação.</small><span class="err" data-err="c_cc"></span></div>
+        <div class="field" id="ccValBox"><label for="c_ccval">Válido até</label><input type="date" id="c_ccval"><small>Data de validade do Cartão de Cidadão.</small><span class="err" data-err="c_ccval"></span></div>
+        <div class="field" id="repBox" hidden><label for="c_rep">Quem assina pela empresa</label><input type="text" id="c_rep" placeholder="Nome do gerente ou administrador"><span class="err" data-err="c_rep"></span></div>
+        <div class="field" id="cargoBox" hidden><label for="c_cargo">Cargo</label><input type="text" id="c_cargo" placeholder="Gerente"><span class="err" data-err="c_cargo"></span></div>
         <div class="field wide"><label for="c_morada">Morada</label><input type="text" id="c_morada" autocomplete="street-address"><span class="err" data-err="c_morada"></span></div>
         <div class="field"><label for="c_cp">Código postal</label><input type="text" id="c_cp" class="mono" inputmode="numeric" placeholder="0000-000" maxlength="8"><span class="err" data-err="c_cp"></span></div>
         <div class="field"><label for="c_loc">Localidade</label><input type="text" id="c_loc"><span class="err" data-err="c_loc"></span></div>
@@ -325,95 +359,91 @@ footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
 
   <!-- 6 MEDIDAS -->
   <section class="step" data-step="5" hidden>
-    <h1>Medidas da zona de carga</h1>
-    <p class="lead">Com uma fita métrica, tire as medidas dos desenhos. Escreva em centímetros.</p>
+    <h1>Medidas da caixa</h1>
+    <p class="lead">Com uma fita métrica, tire as medidas dos desenhos e escreva-as em <b>milímetros</b> (2,5 m = 2500 mm). Cada cota do desenho tem uma caixa da mesma cor e com a mesma letra.</p>
     <div class="card">
-      <p class="note">As medidas são <b>por dentro da zona de carga</b>, de parede a parede, com a fita encostada ao chão do lado de dentro. <b>Toque numa cota do desenho</b> para escrever a medida.</p>
-      <div class="drawings">
-      <figure class="drawing"><figcaption>Vista de lado</figcaption>
-        <svg viewBox="0 0 760 360" xmlns="http://www.w3.org/2000/svg" font-family="IBM Plex Mono, Consolas, monospace" role="img" aria-label="Corte lateral de uma viatura comercial com as medidas interiores A e B e a distância entre eixos">
-          <defs>
-            <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#14254a"/></marker>
-            <marker id="arb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#2a86d9"/></marker>
-            <pattern id="hat" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="8" stroke="#2a86d9" stroke-width="1.2" opacity=".3"/></pattern>
-          </defs>
-          <line x1="20" y1="300" x2="740" y2="300" stroke="#5b6678" stroke-width="1.5"/>
-          <rect x="52" y="246" width="610" height="10" fill="#5b6678"/>
-          <path d="M52 256 L52 182 Q54 152 80 144 L118 128 Q130 122 146 122 L196 122 L196 256 Z" fill="#ffffff" stroke="#14254a" stroke-width="2.5"/>
-          <path d="M84 160 L120 138 L172 138 L172 180 L84 180 Z" fill="#cfe2f5" stroke="#14254a" stroke-width="1.5"/>
-          <rect x="204" y="102" width="456" height="144" fill="#14254a"/>
-          <rect x="216" y="112" width="432" height="124" fill="#ffffff"/>
-          <rect x="216" y="112" width="432" height="124" fill="url(#hat)"/>
-          <text x="432" y="166" text-anchor="middle" font-size="15" fill="#14254a" font-weight="500">INTERIOR DA ZONA DE CARGA</text>
-          <text x="432" y="186" text-anchor="middle" font-size="12" fill="#5b6678">(vista em corte)</text>
-          <line x1="222" y1="231" x2="642" y2="231" stroke="#e8a317" stroke-width="5" stroke-linecap="round"/>
-          <text x="432" y="223" text-anchor="middle" font-size="11" fill="#a8530c">fita métrica no chão, por dentro</text>
-          <text x="224" y="130" font-size="11" fill="#5b6678">← parede da frente</text>
-          <text x="640" y="130" text-anchor="end" font-size="11" fill="#5b6678">porta de trás →</text>
-          <circle cx="128" cy="268" r="32" fill="#1b2433"/><circle cx="128" cy="268" r="13" fill="#d5dce6"/><circle cx="128" cy="268" r="3" fill="#1b2433"/>
-          <circle cx="510" cy="268" r="32" fill="#1b2433"/><circle cx="510" cy="268" r="13" fill="#d5dce6"/><circle cx="510" cy="268" r="3" fill="#1b2433"/>
-          <g stroke="#14254a" stroke-width="1" stroke-dasharray="3 3">
-            <line x1="216" y1="112" x2="216" y2="14"/><line x1="648" y1="112" x2="648" y2="14"/>
-            <line x1="510" y1="268" x2="510" y2="80"/><line x1="128" y1="300" x2="128" y2="342"/><line x1="510" y1="300" x2="510" y2="342"/>
-          </g>
-          <line x1="218" y1="24" x2="646" y2="24" stroke="#14254a" stroke-width="1.6" marker-start="url(#ar)" marker-end="url(#ar)"/>
-          <g class="hit" data-m="m_b" tabindex="0" role="button" aria-label="Escrever a medida B"><rect x="342" y="9" width="180" height="30" rx="4" fill="#14254a"/><text x="432" y="29" text-anchor="middle" font-size="13" fill="#fff" font-weight="500" data-lbl="m_b">B · interior total ✎</text></g>
-          <line x1="218" y1="64" x2="508" y2="64" stroke="#2a86d9" stroke-width="1.8" marker-start="url(#arb)" marker-end="url(#arb)"/>
-          <g class="hit" data-m="m_a" tabindex="0" role="button" aria-label="Escrever a medida A"><rect x="273" y="49" width="180" height="30" rx="4" fill="#2a86d9"/><text x="363" y="69" text-anchor="middle" font-size="13" fill="#fff" font-weight="500" data-lbl="m_a">A · até ao eixo ✎</text></g>
-          <line x1="512" y1="64" x2="646" y2="64" stroke="#5b6678" stroke-width="1.6" stroke-dasharray="5 3" marker-start="url(#ar)" marker-end="url(#ar)"/>
-          <rect x="530" y="51" width="98" height="26" rx="4" fill="#5b6678"/><text x="579" y="69" text-anchor="middle" font-size="12" fill="#fff" font-weight="500" data-lbl="m_c">C = B − A</text>
-          <line x1="130" y1="332" x2="508" y2="332" stroke="#14254a" stroke-width="1.6" marker-start="url(#ar)" marker-end="url(#ar)"/>
-          <g class="hit" data-m="m_ee" tabindex="0" role="button" aria-label="Escrever a distância entre eixos"><rect x="219" y="317" width="200" height="30" rx="4" fill="#14254a"/><text x="319" y="337" text-anchor="middle" font-size="13" fill="#fff" font-weight="500" data-lbl="m_ee">ENTRE EIXOS ✎</text></g>
-          <text x="40" y="96" font-size="12" fill="#5b6678">FRENTE</text><text x="712" y="96" font-size="12" fill="#5b6678" text-anchor="middle">TRÁS</text>
-        </svg>
-      </figure>
-      <figure class="drawing"><figcaption>Vista de trás, portas abertas</figcaption>
-        <svg viewBox="0 0 360 330" xmlns="http://www.w3.org/2000/svg" font-family="IBM Plex Mono, Consolas, monospace" role="img" aria-label="Vista de trás da zona de carga com a largura e a altura interiores">
-          <defs>
-            <marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#14254a"/></marker>
-            <pattern id="hat2" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="8" stroke="#2a86d9" stroke-width="1.2" opacity=".3"/></pattern>
-          </defs>
-          <line x1="20" y1="300" x2="340" y2="300" stroke="#5b6678" stroke-width="1.5"/>
-          <rect x="110" y="244" width="30" height="56" rx="5" fill="#1b2433"/><rect x="230" y="244" width="30" height="56" rx="5" fill="#1b2433"/>
-          <rect x="96" y="232" width="188" height="14" fill="#5b6678"/>
-          <rect x="90" y="40" width="200" height="192" fill="#14254a"/>
-          <rect x="102" y="50" width="176" height="172" fill="#ffffff"/>
-          <rect x="102" y="50" width="176" height="172" fill="url(#hat2)"/>
-          <line x1="104" y1="217" x2="276" y2="217" stroke="#e8a317" stroke-width="5" stroke-linecap="round"/>
-          <line x1="268" y1="214" x2="268" y2="56" stroke="#e8a317" stroke-width="5" stroke-linecap="round"/>
-          <text x="190" y="125" text-anchor="middle" font-size="12" fill="#14254a" font-weight="500">INTERIOR</text>
-          <text x="190" y="142" text-anchor="middle" font-size="10" fill="#5b6678">(por dentro)</text>
-          <g stroke="#14254a" stroke-width="1" stroke-dasharray="3 3"><line x1="102" y1="222" x2="102" y2="270"/><line x1="278" y1="222" x2="278" y2="270"/><line x1="102" y1="50" x2="36" y2="50"/><line x1="102" y1="222" x2="36" y2="222"/></g>
-          <line x1="104" y1="262" x2="276" y2="262" stroke="#14254a" stroke-width="1.6" marker-start="url(#ar2)" marker-end="url(#ar2)"/>
-          <g class="hit" data-m="m_l" tabindex="0" role="button" aria-label="Escrever a largura interior"><rect x="120" y="248" width="140" height="28" rx="4" fill="#14254a"/><text x="190" y="267" text-anchor="middle" font-size="12" fill="#fff" font-weight="500" data-lbl="m_l">L · largura ✎</text></g>
-          <line x1="44" y1="52" x2="44" y2="220" stroke="#14254a" stroke-width="1.6" marker-start="url(#ar2)" marker-end="url(#ar2)"/>
-          <g class="hit" data-m="m_h" tabindex="0" role="button" aria-label="Escrever a altura interior"><rect x="2" y="122" width="84" height="28" rx="4" fill="#14254a"/><text x="44" y="141" text-anchor="middle" font-size="11.5" fill="#fff" font-weight="500" data-lbl="m_h">H · altura ✎</text></g>
-        </svg>
-      </figure>
+      <figure class="vista"><figcaption>Vista lateral</figcaption><img src="medidas/lateral.jpg" width="1400" height="639" alt="Vista lateral de uma viatura com caixa: A comprimento interior, B comprimento exterior, C da frente interior ao eixo traseiro, D entre eixos, G altura interior e H altura exterior"></figure>
+      <div class="cx">
+        <div class="mb i"><label for="m_A"><b>A</b>Comprimento interior</label><div class="unit"><input id="m_A" inputmode="numeric" placeholder="—"><span>mm</span></div><span class="err" data-err="m_A"></span></div>
+        <div class="mb x"><label for="m_B"><b>B</b>Comprimento exterior</label><div class="unit"><input id="m_B" inputmode="numeric" placeholder="—"><span>mm</span></div><span class="err" data-err="m_B"></span></div>
+        <div class="mb c"><label for="m_C"><b>C</b>Frente interior ao eixo traseiro</label><div class="unit"><input id="m_C" inputmode="numeric" placeholder="—"><span>mm</span></div><span class="err" data-err="m_C"></span></div>
+        <div class="mb d"><label for="m_D"><b>D</b>Entre eixos</label><div class="unit"><input id="m_D" inputmode="numeric" placeholder="—"><span>mm</span></div><span class="err" data-err="m_D"></span></div>
+        <div class="mb i"><label for="m_G"><b>G</b>Altura interior</label><div class="unit"><input id="m_G" inputmode="numeric" placeholder="—"><span>mm</span></div><span class="err" data-err="m_G"></span></div>
+        <div class="mb x"><label for="m_H"><b>H</b>Altura exterior</label><div class="unit"><input id="m_H" inputmode="numeric" placeholder="—"><span>mm</span></div><span class="err" data-err="m_H"></span></div>
       </div>
+    </div>
+    <div class="card">
+      <figure class="vista tras"><figcaption>Vista traseira</figcaption><img src="medidas/traseira.jpg" width="630" height="620" alt="Vista traseira da caixa: E largura interior, F largura exterior, G altura interior e H altura exterior"></figure>
+      <div class="cx two">
+        <div class="mb i"><label for="m_E"><b>E</b>Largura interior</label><div class="unit"><input id="m_E" inputmode="numeric" placeholder="—"><span>mm</span></div><span class="err" data-err="m_E"></span></div>
+        <div class="mb x"><label for="m_F"><b>F</b>Largura exterior</label><div class="unit"><input id="m_F" inputmode="numeric" placeholder="—"><span>mm</span></div><span class="err" data-err="m_F"></span></div>
+        <div class="mb i"><label for="m_G2"><b>G</b>Altura interior</label><div class="unit"><input id="m_G2" inputmode="numeric" placeholder="—"><span>mm</span></div><span class="err" data-err="m_G"></span></div>
+        <div class="mb x"><label for="m_H2"><b>H</b>Altura exterior</label><div class="unit"><input id="m_H2" inputmode="numeric" placeholder="—"><span>mm</span></div><span class="err" data-err="m_H"></span></div>
+      </div>
+      <p class="muted">G e H são as mesmas do desenho de lado: escreva-as num sítio e aparecem nos dois.</p>
+    </div>
+    <div class="card">
+      <h2>Como medir</h2>
       <div class="legend">
-        <div><span class="tag">A</span><span>Por dentro: da <b>parede da frente</b> até ao ponto do chão da caixa que fica por cima do <b>centro da roda de trás</b>.</span></div>
-        <div><span class="tag navy">B</span><span>Por dentro: <b>comprimento interior total</b>, da parede da frente até à porta de trás fechada.</span></div>
-        <div><span class="tag grey">C</span><span>Do centro da roda de trás ao fim da zona de carga. <b>Não precisa de medir</b>: C = B − A.</span></div>
-        <div><span class="tag navy">L</span><span>Por dentro: <b>largura interior</b>, de parede a parede, junto ao chão.</span></div>
-        <div><span class="tag navy">H</span><span>Por dentro: <b>altura interior</b>, do chão da caixa ao teto. Numa caixa aberta, até ao topo dos taipais.</span></div>
-        <div><span class="tag navy">EE</span><span><b>Distância entre eixos</b>: do centro da roda da frente ao centro da roda de trás, do mesmo lado.</span></div>
+        <div><span class="tag">A</span><span><b>Comprimento interior</b>: por dentro, da parede da frente à parede (ou porta) de trás, junto ao chão.</span></div>
+        <div><span class="tag x">B</span><span><b>Comprimento exterior</b>: por fora, da frente da caixa ao fim da caixa.</span></div>
+        <div><span class="tag c">C</span><span>Por dentro, da <b>parede da frente</b> até ao ponto do chão por cima do <b>centro da roda de trás</b>.</span></div>
+        <div><span class="tag d">D</span><span><b>Entre eixos</b>: do centro da roda da frente ao centro da roda de trás, do mesmo lado.</span></div>
+        <div><span class="tag">E</span><span><b>Largura interior</b>: por dentro, de parede a parede (ou de taipal a taipal).</span></div>
+        <div><span class="tag x">F</span><span><b>Largura exterior</b>: a largura maior da caixa, por fora (sem os espelhos).</span></div>
+        <div><span class="tag">G</span><span><b>Altura interior</b>: do chão da caixa ao teto. Numa caixa aberta, até ao topo dos taipais.</span></div>
+        <div><span class="tag x">H</span><span><b>Altura exterior</b>: da parte de baixo da caixa (o estrado) ao ponto mais alto da caixa.</span></div>
       </div>
       <p class="muted">Dica: o centro da roda é o centro da tampa da jante. Encoste uma régua na vertical e marque o ponto no chão com giz.</p>
-      <div class="med">
-        <div class="field"><label for="m_a"><span class="tag">A</span>Até ao eixo traseiro</label><div class="unit"><input id="m_a" inputmode="decimal"><span>cm</span></div><span class="err" data-err="m_a"></span></div>
-        <div class="field"><label for="m_b"><span class="tag navy">B</span>Comprimento interior</label><div class="unit"><input id="m_b" inputmode="decimal"><span>cm</span></div><span class="err" data-err="m_b"></span></div>
-        <div class="field"><span class="lbl"><span class="tag grey">C</span>Eixo ao fim (B − A)</span><div class="unit auto"><output id="m_c">—</output><span>cm</span></div><span class="err"></span></div>
-        <div class="field"><label for="m_l"><span class="tag navy">L</span>Largura interior</label><div class="unit"><input id="m_l" inputmode="decimal"><span>cm</span></div><span class="err" data-err="m_l"></span></div>
-        <div class="field"><label for="m_h"><span class="tag navy">H</span>Altura interior</label><div class="unit"><input id="m_h" inputmode="decimal"><span>cm</span></div><span class="err" data-err="m_h"></span></div>
-        <div class="field"><label for="m_ee"><span class="tag navy">EE</span>Entre eixos</label><div class="unit"><input id="m_ee" inputmode="decimal"><span>cm</span></div><span class="err" data-err="m_ee"></span></div>
-      </div>
-      <div class="field"><label for="obs">Observações</label><textarea id="obs" rows="3" placeholder="Por exemplo: a medida B foi tirada até às dobradiças da porta."></textarea></div>
+      <div class="field"><label for="obs">Observações</label><textarea id="obs" rows="3" placeholder="Por exemplo: a medida A foi tirada até às dobradiças da porta."></textarea></div>
     </div>
   </section>
 
-  <!-- 7 ENVIAR -->
+  <!-- 7 DOCUMENTOS -->
   <section class="step" data-step="6" hidden>
+    <h1>Documentos e custos</h1>
+    <p class="lead">Com os dados que já preencheu, o Modelo 9 do IMT e a procuração ficam preenchidos. Só tem de confirmar, assinar e enviar-nos.</p>
+    <div class="card">
+      <h2>Quem entrega o processo no IMT?</h2>
+      <div class="seg" role="radiogroup" aria-label="Quem entrega o processo no IMT">
+        <label><input type="radio" name="imt" id="imtR" value="ryrox" checked> A Ryrox trata de tudo no IMT</label>
+        <label><input type="radio" name="imt" id="imtC" value="cliente"> Eu entrego no IMT</label>
+      </div>
+      <p class="muted" id="imtTxt"></p>
+    </div>
+    <div class="card" id="ccBox">
+      <h2>Cartão de Cidadão</h2>
+      <p class="muted">Para o Modelo 9 precisamos de uma cópia das duas faces do seu Cartão de Cidadão.</p>
+      <div class="slots" id="slotsCC"></div>
+    </div>
+    <div class="card" id="certBox" hidden>
+      <h2>Certidão permanente</h2>
+      <p class="muted">No Modelo 9 vai o código da certidão permanente que indicou no passo 1: <b id="certTxt" class="mono"></b>. Com a certidão, a assinatura não precisa de reconhecimento no notário.</p>
+    </div>
+    <div class="card">
+      <h2>Documentos preenchidos</h2>
+      <p class="muted" id="docsTxt"></p>
+      <div class="docbtns"><button type="button" class="btn sec" id="verM9">Ver o Modelo 9</button><button type="button" class="btn sec" id="verProc">Ver a procuração</button></div>
+      <p class="muted" id="docsErr"></p>
+      <ol class="passos">
+        <li>Abra cada documento e confirme os dados.</li>
+        <li>Imprima e assine: o Modelo 9 no campo «Assinatura» do requerente e a procuração por baixo da linha, como no Cartão de Cidadão.</li>
+        <li>Fotografe ou digitalize as folhas assinadas e carregue-as aqui. Se preferir, pode enviá-las depois.</li>
+      </ol>
+      <div class="slots" id="slotsAss"></div>
+    </div>
+    <div class="card">
+      <h2>Custos da legalização</h2>
+      <table class="custos" id="custos"></table>
+      <h2>Pagamento</h2>
+      <p class="muted">Faça a transferência do total para o IBAN da Ryrox e carregue aqui o comprovativo. O processo avança quando recebermos o pagamento.</p>
+      <div class="iban" id="iban"></div>
+      <div class="slots" id="slotsPag"></div>
+    </div>
+  </section>
+
+  <!-- 8 ENVIAR -->
+  <section class="step" data-step="7" hidden>
     <div id="sumBox" class="step" style="display:grid;gap:16px">
       <h1>Rever e enviar</h1>
       <p class="lead">Confirme que está tudo. Pode tocar numa linha para voltar a esse ponto.</p>
@@ -436,15 +466,6 @@ footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
   <div class="stage" id="camStage"><video id="camVideo" playsinline muted autoplay></video><div class="frame" id="camFrame"></div><img class="ghost" id="camGhost" alt="" hidden><div class="estado" id="camEstado">A abrir a câmara...</div></div>
   <div class="bot"><button type="button" class="txt" id="camFechar">Cancelar</button><button type="button" class="shot" id="camShot" aria-label="Fotografar"></button><button type="button" class="txt" id="camAuto">Automático: sim</button></div>
 </div>
-<div class="modal" id="modal" hidden>
-  <div class="box" role="dialog" aria-modal="true" aria-labelledby="mTitle">
-    <h2 id="mTitle"></h2>
-    <p class="muted" id="mHelp"></p>
-    <div class="unit"><input id="mInput" inputmode="decimal"><span>cm</span></div>
-    <p class="err" id="mErr"></p>
-    <div class="row"><button type="button" class="btn sec" id="mCancel">Cancelar</button><button type="button" class="btn" id="mOk">Guardar</button></div>
-  </div>
-</div>
 <footer class="bar">
   <div class="miss" id="miss" hidden></div>
   <div class="in">
@@ -459,7 +480,7 @@ footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
   "use strict";
   var $ = function (id) { return document.getElementById(id); };
   var NOAI = "Não foi possível preparar a leitura automática neste telemóvel. Preencha os dados da viatura no passo seguinte, com o certificado à sua frente.";
-  var STEPS = ["Pedido", "Certificado", "Viatura", "Inspeções", "Fotografias", "Medidas", "Enviar"];
+  var STEPS = ["Pedido", "Certificado", "Viatura", "Inspeções", "Fotografias", "Medidas", "Documentos", "Enviar"];
   var cur = 0;
   var sample = null, aiImages = false, duaBusy = false, duaReadFor = null, duaOn = true;
   var API = "https://dxhpsgyysphzaeatafit.supabase.co/functions/v1/legalizacao";
@@ -470,7 +491,12 @@ footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
     { id: "dua_f", grp: "slotsDua", nome: "Certificado · frente", req: true, doc: true },
     { id: "dua_v", grp: "slotsDua", nome: "Certificado · verso", req: true, doc: true },
     { id: "insp", grp: "slotsInsp", nome: "Última inspeção periódica", req: true, doc: true, pdf: true },
-    { id: "fac", grp: "slotsInsp", nome: "Inspeção facultativa com pesagem", req: true, doc: true, pdf: true }
+    { id: "fac", grp: "slotsInsp", nome: "Inspeção facultativa com pesagem", req: true, doc: true, pdf: true },
+    { id: "cc_f", grp: "slotsCC", nome: "Cartão de Cidadão · frente", req: true, doc: true, pdf: true },
+    { id: "cc_v", grp: "slotsCC", nome: "Cartão de Cidadão · verso", req: true, doc: true, pdf: true },
+    { id: "m9_ass", grp: "slotsAss", nome: "Modelo 9 assinado", doc: true, pdf: true, opc: true },
+    { id: "proc_ass", grp: "slotsAss", nome: "Procuração assinada", doc: true, pdf: true, opc: true },
+    { id: "comprov", grp: "slotsPag", nome: "Comprovativo da transferência", doc: true, pdf: true, opc: true }
   ];
   // posição da câmara numa vista de cima (frente da viatura para cima)
   var FOTOS = [
@@ -609,6 +635,7 @@ footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
     var chip = el.querySelector("[data-chip]");
     chip.className = "chip " + c[0]; chip.textContent = c[1];
     if (id === "fac" && $("facPend") && $("facPend").checked && !s.file) { chip.className = "chip aviso"; chip.textContent = "Mais tarde"; }
+    if (s.cfg.opc && !s.file) { chip.className = "chip"; chip.textContent = "Pode ser depois"; }
     var view = el.querySelector("[data-view]");
     if (s.file && s.url) view.innerHTML = '<img class="ph" alt="" src="' + s.url + '">' + (s.cfg.foto ? '<img class="mini" alt="" src="' + s.cfg.img + '">' : "");
     else if (s.file) view.innerHTML = '<span class="pdf">PDF</span>';
@@ -765,11 +792,15 @@ footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
     if (b && i && b !== i) { $("impS").checked = true; $("impHelp").textContent = "Importada: a 1.ª matrícula (B) é anterior à matrícula em Portugal (I)."; }
     else if (b && i) { $("impN").checked = true; $("impHelp").textContent = "Matrícula original portuguesa (B igual a I)."; }
   }
+  // a distância entre eixos está em cm nos dados da viatura e em mm nas medidas da caixa
   function syncEE(from) {
-    var to = from === "v_ee" ? "m_ee" : "v_ee";
-    if ($(from).value && $(to).value !== $(from).value) {
-      $(to).value = $(from).value;
-      if ($(from).closest(".field").classList.contains("ai")) $(to).closest(".field").classList.add("ai");
+    var n = num(from); if (!(n > 0)) return;
+    if (from === "v_ee") {
+      var mmv = String(Math.round(n * 10));
+      if ($("m_D").value !== mmv) { $("m_D").value = mmv; if ($("v_ee").closest(".field").classList.contains("ai")) $("m_D").closest(".mb").classList.add("ai"); }
+    } else {
+      var cmv = String(Math.round(n / 10));
+      if ($("v_ee").value !== cmv) $("v_ee").value = cmv;
     }
   }
 
@@ -777,7 +808,7 @@ footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
   var cam = { stream: null, id: null, timer: null, ratio: 1.585, bons: 0, auto: true, rect: null };
   function abrirCamara(id) {
     cam.id = id; cam.bons = 0; cam.veiculo = !!FILES[id].cfg.foto;
-    cam.ratio = (id === "dua_f" || id === "dua_v") ? 85.6 / 54 : 210 / 297;
+    cam.ratio = /^(dua|cc)_/.test(id) ? 85.6 / 54 : 210 / 297;
     $("camTitulo").textContent = FILES[id].cfg.nome;
     $("camDica").textContent = cam.veiculo ? "Encaixe a viatura no desenho, inteira e com as rodas. Telemóvel na horizontal." : cam.ratio > 1 ? "Pouse o cartão numa mesa e encaixe-o na moldura. Telemóvel na horizontal ajuda." : "Pouse a folha numa mesa e encaixe-a na moldura.";
     $("camFrame").hidden = cam.veiculo; $("camAuto").style.visibility = cam.veiculo ? "hidden" : "visible";
@@ -978,16 +1009,18 @@ footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
     });
   }
   function dadosPedido() {
-    var a = num("m_a"), b = num("m_b"), pf = num("p_f"), pt = num("p_t"), prop = $("propN").checked;
+    var pf = num("p_f"), pt = num("p_t"), prop = $("propN").checked, emp = $("tipoE").checked;
     return {
       pedido: { trabalho: val("q_trab"), caixa: val("q_caixa"), descricao: val("q_desc") },
-      cliente: { tipo: $("tipoE").checked ? "Empresa" : "Particular", nome: val("c_nome"), nif: val("c_nif"), cc: val("c_cc"), morada: val("c_morada"), cp: val("c_cp"), localidade: val("c_loc"), telemovel: val("c_tel"), email: val("c_email"), proprietario: prop ? "Não" : "Sim", nome_proprietario: prop ? val("c_prop") : "" },
+      cliente: { tipo: $("tipoE").checked ? "Empresa" : "Particular", nome: val("c_nome"), nif: val("c_nif"), cc: val("c_cc"), morada: val("c_morada"), cp: val("c_cp"), localidade: val("c_loc"), telemovel: val("c_tel"), email: val("c_email"), proprietario: prop ? "Não" : "Sim", nome_proprietario: prop ? val("c_prop") : "",
+        validade_cc: emp ? "" : val("c_ccval"), representante: emp ? val("c_rep") : "", cargo: emp ? val("c_cargo") : "" },
       viatura: { matricula: fmtMat(val("v_mat")), data_primeira: val("v_data1"), data_matricula: val("v_data"), matricula_anterior: val("v_matant"), importada: $("impS").checked ? "Sim" : "Não", marca: val("v_marca"), modelo: val("v_modelo"), denominacao: val("v_den"), vin: norm(val("v_vin")), homologacao: val("v_hom"),
         categoria: val("v_cat"), tipo: val("v_tipo"), carrocaria: val("v_carr"), cor: val("v_cor"), lugares: val("v_lug"), lugares_pe: val("v_lugp"), tara: val("v_tara"), peso_bruto: val("v_bruto"), peso_bruto_tecnico: val("v_brutot"), peso_conjunto: val("v_conj"),
         eixo_frente_max: val("v_ef"), eixo_tras_max: val("v_et"), reboque_travado: val("v_o1"), reboque_nao_travado: val("v_o2"), cilindrada: val("v_cil"), potencia: val("v_pot"), combustivel: val("v_comb"), eixos: val("v_eixos"), entre_eixos: val("v_ee"),
         rodado: val("v_rod"), pneus_frente: val("v_pn1"), pneus_tras: val("v_pn2"), observacoes: val("v_z") },
       inspecao: { pendente: $("facPend").checked && !FILES.fac.file ? "Sim" : "", peso_frente: val("p_f"), peso_tras: val("p_t"), peso_total: pf > 0 && pt > 0 ? String(pf + pt) : "" },
-      medidas: { a: val("m_a"), b: val("m_b"), c: a > 0 && b > a ? String(Math.round((b - a) * 10) / 10) : "", largura: val("m_l"), altura: val("m_h"), entre_eixos: val("m_ee"), observacoes: val("obs") }
+      medidas: { comprimento_interior: val("m_A"), comprimento_exterior: val("m_B"), frente_eixo: val("m_C"), entre_eixos: val("m_D"), largura_interior: val("m_E"), largura_exterior: val("m_F"), altura_interior: val("m_G"), altura_exterior: val("m_H"), observacoes: val("obs") },
+      documentos: { entrega_imt: ryroxIMT() ? "Ryrox (com procuração)" : "O cliente", certidao_permanente: emp ? val("c_cc") : "", total: eur(custos().total) + " (com IVA)", modelo9_assinado: FILES.m9_ass.file ? "Sim" : "Envia depois", procuracao_assinada: !ryroxIMT() ? "" : FILES.proc_ass.file ? "Sim" : "Envia depois", comprovativo: FILES.comprov.file ? "Sim" : "Envia depois" }
     };
   }
   function ficheirosPedido() {
@@ -1089,7 +1122,14 @@ footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
       var emp = $("tipoE").checked;
       if (val("c_nome").length < 3) E.c_nome = emp ? "Escreva o nome da empresa." : "Escreva o nome completo.";
       if (!nifOk(val("c_nif"))) E.c_nif = "NIF inválido. Confirme os 9 algarismos.";
-      if (!emp && val("c_cc").length < 6) E.c_cc = "Escreva o número do documento.";
+      if (emp) {
+        if (!/^\d{4}-\d{4}-\d{4}$/.test(val("c_cc"))) E.c_cc = "O código da certidão tem o formato 0000-0000-0000.";
+        if (val("c_rep").length < 5) E.c_rep = "Escreva o nome de quem assina pela empresa.";
+      } else {
+        if (val("c_cc").length < 6) E.c_cc = "Escreva o número do documento.";
+        if (!val("c_ccval")) E.c_ccval = "Indique a validade do Cartão de Cidadão.";
+        else if (val("c_ccval") < new Date().toISOString().slice(0, 10)) E.c_ccval = "O Cartão de Cidadão está fora da validade.";
+      }
       if (val("c_morada").length < 5) E.c_morada = "Escreva a morada.";
       if (!/^\d{4}-\d{3}$/.test(val("c_cp"))) E.c_cp = "Formato 0000-000.";
       if (val("c_loc").length < 2) E.c_loc = "Escreva a localidade.";
@@ -1142,19 +1182,25 @@ footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
       if (!(num("p_t") > 0)) E.p_t = "Indique o peso de trás.";
     }
     if (step === 5) {
-      var a = num("m_a"), b = num("m_b"), ee = num("m_ee");
-      if (!(a > 0)) E.m_a = "Indique a medida A."; if (!(b > 0)) E.m_b = "Indique a medida B."; if (!(ee > 0)) E.m_ee = "Indique a distância entre eixos.";
-      if (a > 0 && b > 0 && a >= b) E.m_a = "A tem de ser menor do que B.";
-      if (b > 700) E.m_b = "Parece grande demais. As medidas são em centímetros.";
-      if (ee > 500) E.m_ee = "Parece grande demais. As medidas são em centímetros.";
-      var ml = num("m_l"), mh = num("m_h");
-      if (!(ml > 0)) E.m_l = "Indique a largura interior."; else if (ml < 50 || ml > 300) E.m_l = "Confirme: entre 50 e 300 cm.";
-      if (!(mh > 0)) E.m_h = "Indique a altura interior."; else if (mh < 20 || mh > 350) E.m_h = "Confirme: entre 20 e 350 cm.";
+      var M = {}, NOME = { A: "o comprimento interior", B: "o comprimento exterior", C: "a medida C", D: "a distância entre eixos", E: "a largura interior", F: "a largura exterior", G: "a altura interior", H: "a altura exterior" };
+      Object.keys(NOME).forEach(function (k) {
+        M[k] = num("m_" + k);
+        if (!(M[k] > 0)) E["m_" + k] = "Indique " + NOME[k] + ".";
+        else if (M[k] < 100) E["m_" + k] = "Em milímetros: 2,5 m = 2500 mm.";
+      });
+      if (M.A > 0 && M.B > 0 && M.A >= M.B) E.m_A = "O interior (A) tem de ser menor do que o exterior (B).";
+      if (M.C > 0 && M.A > 0 && M.C >= M.A) E.m_C = "C tem de ser menor do que o comprimento interior (A).";
+      if (M.E > 0 && M.F > 0 && M.E >= M.F) E.m_E = "A largura interior (E) tem de ser menor do que a exterior (F).";
+      if (M.G > 0 && M.H > 0 && M.G >= M.H) E.m_G = "A altura interior (G) tem de ser menor do que a exterior (H).";
+      if (M.B > 14000) E.m_B = "Parece grande demais. As medidas são em milímetros.";
+      if (M.D > 8000) E.m_D = "Parece grande demais. As medidas são em milímetros.";
+      if (M.F > 2600) E.m_F = "Passa a largura máxima legal (2550 mm; 2600 mm nas isotérmicas). Confirme.";
+      if (M.H > 4000) E.m_H = "Parece grande demais. As medidas são em milímetros.";
     }
     return E;
   }
   function filesPending(step) {
-    var ids = step === 1 ? ["dua_f", "dua_v"] : step === 3 ? ["insp", "fac"] : step === 4 ? FOTOS.map(function (f) { return f.id; }) : [];
+    var ids = step === 1 ? ["dua_f", "dua_v"] : step === 3 ? ["insp", "fac"] : step === 4 ? FOTOS.map(function (f) { return f.id; }) : step === 6 && !$("tipoE").checked ? ["cc_f", "cc_v"] : [];
     return ids.filter(function (id) {
       if (id === "fac" && $("facPend").checked && !FILES.fac.file) return false;
       var st = FILES[id].status; return st !== "ok" && st !== "aviso";
@@ -1175,7 +1221,7 @@ footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
     }
     var box = $("vAvisos"); box.hidden = !out.length; box.innerHTML = out.length ? "<b>Confirme:</b> " + out.map(esc).join(" ") : "";
   }
-  function stepDone(i) { return i === 6 ? false : Object.keys(errsFor(i)).length === 0 && filesPending(i).length === 0; }
+  function stepDone(i) { return i === 7 ? false : Object.keys(errsFor(i)).length === 0 && filesPending(i).length === 0; }
 
   var touched = {};
   function showErrs(step, force) {
@@ -1188,11 +1234,11 @@ footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
   // ---------- cálculos e resumo ----------
   function calcs() {
     avisosViatura();
-    var a = num("m_a"), b = num("m_b"), t = num("v_tara"), br = num("v_bruto"), pf = num("p_f"), pt = num("p_t");
-    $("m_c").textContent = (a > 0 && b > a) ? (Math.round((b - a) * 10) / 10).toLocaleString("pt-PT") : "—";
+    var t = num("v_tara"), br = num("v_bruto"), pf = num("p_f"), pt = num("p_t");
+    mirror();
     $("v_cu").textContent = (t > 0 && br > t) ? fmt(br - t, "kg") : "—";
     $("p_tot").textContent = (pf > 0 && pt > 0) ? fmt(pf + pt, "kg") : "—";
-    paintCotas();
+    if (cur === 6) paintDocs();
     $("hdrMat").textContent = matOk(val("v_mat")) ? fmtMat(val("v_mat")) : "Viatura";
   }
   function summary() {
@@ -1203,14 +1249,18 @@ footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
       [3, "Última inspeção periódica", ["ok", "aviso"].indexOf(FILES.insp.status) >= 0],
       [3, "Inspeção facultativa com pesagem", $("facPend").checked && !FILES.fac.file ? "mais tarde" : stepDone(3)],
       [4, "Seis fotografias da viatura", stepDone(4)],
-      [5, "Medidas da zona de carga", stepDone(5)]
-    ];
+      [5, "Medidas da caixa", stepDone(5)],
+      [6, $("tipoE").checked ? "Código da certidão permanente" : "Cartão de Cidadão (frente e verso)", stepDone(6)],
+      [6, "Modelo 9 assinado", fileSt("m9_ass")],
+      ryroxIMT() ? [6, "Procuração assinada", fileSt("proc_ass")] : null,
+      [6, "Comprovativo da transferência", fileSt("comprov")]
+    ].filter(Boolean);
     $("checklist").innerHTML = rows.map(function (r) {
       var st = r[2] === true ? '<span class="chip ok">Completo</span>' : r[2] === "mais tarde" ? '<span class="chip aviso">Mais tarde</span>' : '<span class="chip erro">Em falta</span>';
       return '<div><button type="button" data-go="' + r[0] + '">' + r[1] + "</button>" + st + "</div>";
     }).join("");
     $("checklist").querySelectorAll("[data-go]").forEach(function (b) { b.onclick = function () { go(Number(b.getAttribute("data-go"))); }; });
-    var all = [0, 1, 2, 3, 4, 5].every(stepDone);
+    var all = [0, 1, 2, 3, 4, 5, 6].every(stepDone);
     $("send").disabled = !(all && $("rgpd").checked);
     $("sendTxt").textContent = !all ? "Complete os pontos em falta para poder enviar." : !$("rgpd").checked ? "Falta a autorização acima." : "";
   }
@@ -1254,16 +1304,16 @@ footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
   };
 
   // ---------- campos ----------
-  var TEXT = ["q_trab", "q_caixa", "q_desc", "c_nome", "c_nif", "c_cc", "c_morada", "c_cp", "c_loc", "c_tel", "c_email", "c_prop", "v_mat", "v_data1", "v_data", "v_matant", "v_marca", "v_modelo", "v_den", "v_vin", "v_hom", "v_cat", "v_tipo", "v_carr", "v_cor", "v_lug", "v_lugp", "v_tara", "v_bruto", "v_brutot", "v_conj", "v_ef", "v_et", "v_o1", "v_o2", "v_cil", "v_pot", "v_comb", "v_eixos", "v_ee", "v_rod", "v_pn1", "v_pn2", "v_z", "p_f", "p_t", "m_a", "m_b", "m_l", "m_h", "m_ee", "obs"];
+  var TEXT = ["q_trab", "q_caixa", "q_desc", "c_nome", "c_nif", "c_cc", "c_morada", "c_cp", "c_loc", "c_tel", "c_email", "c_prop", "v_mat", "v_data1", "v_data", "v_matant", "v_marca", "v_modelo", "v_den", "v_vin", "v_hom", "v_cat", "v_tipo", "v_carr", "v_cor", "v_lug", "v_lugp", "v_tara", "v_bruto", "v_brutot", "v_conj", "v_ef", "v_et", "v_o1", "v_o2", "v_cil", "v_pot", "v_comb", "v_eixos", "v_ee", "v_rod", "v_pn1", "v_pn2", "v_z", "p_f", "p_t", "m_A", "m_B", "m_C", "m_D", "m_E", "m_F", "m_G", "m_H", "obs", "c_ccval", "c_rep", "c_cargo"];
   var KEY = "ryrox-legalizacao-rascunho";
-  function saveDraft() { try { var d = {}; TEXT.forEach(function (k) { d[k] = $(k).value; }); d.tipo = $("tipoE").checked ? "e" : "p"; d.prop = $("propN").checked ? "n" : "s"; d.fac = $("facPend").checked; d.imp = $("impS").checked; localStorage.setItem(KEY, JSON.stringify(d)); } catch (e) {} }
+  function saveDraft() { try { var d = {}; TEXT.forEach(function (k) { d[k] = $(k).value; }); d.tipo = $("tipoE").checked ? "e" : "p"; d.prop = $("propN").checked ? "n" : "s"; d.fac = $("facPend").checked; d.imp = $("impS").checked; d.imt = $("imtC").checked ? "c" : "r"; localStorage.setItem(KEY, JSON.stringify(d)); } catch (e) {} }
   try {
     var d = JSON.parse(localStorage.getItem(KEY) || "null");
-    if (d) { TEXT.forEach(function (k) { if (d[k] != null) $(k).value = d[k]; }); if (d.tipo === "e") $("tipoE").checked = true; if (d.prop === "n") $("propN").checked = true; $("facPend").checked = !!d.fac; if (d.imp) $("impS").checked = true; }
+    if (d) { TEXT.forEach(function (k) { if (d[k] != null) $(k).value = d[k]; }); if (d.tipo === "e") $("tipoE").checked = true; if (d.prop === "n") $("propN").checked = true; $("facPend").checked = !!d.fac; if (d.imp) $("impS").checked = true; if (d.imt === "c") $("imtC").checked = true; }
   } catch (e) {}
 
   TEXT.forEach(function (k) {
-    var on = function () { $(k).closest(".field") && $(k).closest(".field").classList.remove("ai"); if (k === "v_ee" || k === "m_ee") syncEE(k); if (k === "v_data" || k === "v_data1") impAuto(); saveDraft(); refresh(); };
+    var on = function () { $(k).closest(".field") && $(k).closest(".field").classList.remove("ai"); if (k === "v_ee" || k === "m_D") syncEE(k); if (k === "v_data" || k === "v_data1") impAuto(); saveDraft(); refresh(); };
     $(k).addEventListener("input", on); if ($(k).tagName === "SELECT") $(k).addEventListener("change", on);
     $(k).addEventListener("blur", function () { touched[k] = true; showErrs(cur, false); });
   });
@@ -1273,11 +1323,17 @@ footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
   function tipoPaint() {
     var emp = $("tipoE").checked;
     $("lblNome").textContent = emp ? "Nome da empresa" : "Nome completo";
-    $("lblCC").textContent = emp ? "Certidão permanente (código, opcional)" : "N.º do Cartão de Cidadão";
-    $("ccHelp").textContent = emp ? "Se tiver, ajuda-nos a confirmar quem obriga a empresa." : "Ou de outro documento de identificação.";
+    $("lblCC").textContent = emp ? "Código da certidão permanente" : "N.º do Cartão de Cidadão";
+    $("ccHelp").textContent = emp ? "Formato 0000-0000-0000. Vai no Modelo 9 do IMT." : "Ou de outro documento de identificação.";
+    $("ccValBox").hidden = emp; $("repBox").hidden = !emp; $("cargoBox").hidden = !emp;
     $("propBox").hidden = !$("propN").checked;
   }
-  ["tipoP", "tipoE", "propS", "propN"].forEach(function (k) { $(k).addEventListener("change", function () { tipoPaint(); saveDraft(); refresh(); }); });
+  $("c_cc").addEventListener("input", function () {
+    if (!$("tipoE").checked || /[A-Za-z]/.test(this.value)) return;
+    var v = this.value.replace(/\D/g, "").slice(0, 12); this.value = v.replace(/(\d{4})(?=\d)/g, "$1-");
+  });
+  [["m_G2", "m_G"], ["m_H2", "m_H"]].forEach(function (p) { $(p[0]).addEventListener("input", function () { $(p[1]).value = this.value; touched[p[1]] = true; saveDraft(); refresh(); }); });
+  ["tipoP", "tipoE", "propS", "propN", "imtR", "imtC"].forEach(function (k) { $(k).addEventListener("change", function () { tipoPaint(); saveDraft(); refresh(); }); });
   $("facPend").addEventListener("change", function () { paintSlot("fac"); saveDraft(); refresh(); });
   $("rgpd").addEventListener("change", summary);
   $("vinOk").addEventListener("change", function () { refresh(); });
@@ -1285,6 +1341,13 @@ footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
   $("send").addEventListener("click", function () {
     var btn = this; btn.disabled = true; $("sendTxt").className = "muted"; $("sendTxt").textContent = "A preparar as fotografias...";
     Promise.resolve().then(ficheirosPedido).then(function (fs) {
+      $("sendTxt").textContent = "A preparar o Modelo 9" + (ryroxIMT() ? " e a procuração..." : "...");
+      var mat = norm(val("v_mat")), gera = [gerarModelo9().then(function (x) { return ["modelo9", "Modelo 9 preenchido pelo programa", "Modelo9_" + mat + ".pdf", x]; })];
+      if (ryroxIMT()) gera.push(gerarProcuracao().then(function (x) { return ["procuracao", "Procuração preenchida pelo programa", "Procuracao_IMT_" + mat + ".pdf", x]; }));
+      return Promise.all(gera.map(function (p) {
+        return p.then(function (g) { return pdfB64(g[3]).then(function (b) { return { campo: g[0], rotulo: g[1], nome: g[2], tipo: "application/pdf", b64: b }; }); }).catch(function () { return null; });
+      })).then(function (gs) { return fs.concat(gs.filter(Boolean)); });
+    }).then(function (fs) {
       $("sendTxt").textContent = "A enviar o pedido... (pode demorar um minuto, não feche esta página)";
       return post("/pedido", { hp: $("hp").value, dados: dadosPedido(), ficheiros: fs });
     }).then(function (r) {
@@ -1297,46 +1360,194 @@ footer.bar .pos { font: 500 13px var(--mono); color: var(--muted); }
   });
 
 
-  // ---------- cotas do desenho: tocar abre a janela da medida ----------
-  var MH = {
-    m_a: ["A · Da parede da frente ao eixo traseiro", "Por dentro da zona de carga, da parede da frente até ao ponto por cima do centro da roda de trás."],
-    m_b: ["B · Comprimento interior total", "Por dentro da zona de carga, da parede da frente até à porta de trás fechada."],
-    m_ee: ["Distância entre eixos", "Do centro da roda da frente ao centro da roda de trás, do mesmo lado da viatura."],
-    m_l: ["L · Largura interior", "Por dentro da zona de carga, de parede a parede, junto ao chão."],
-    m_h: ["H · Altura interior", "Do chão da caixa ao teto, por dentro. Numa caixa aberta, até ao topo dos taipais."]
-  };
-  var mFor = null;
-  function openM(id) {
-    mFor = id; $("mTitle").textContent = MH[id][0]; $("mHelp").textContent = MH[id][1];
-    $("mInput").value = $(id).value; $("mErr").textContent = ""; $("modal").hidden = false; $("mInput").focus();
+  // ---------- documentos preenchidos (Modelo 9 e procuração), custos e pagamento ----------
+  var IBAN = "";   // IBAN da Ryrox para as transferências. Vazio: a página diz que o IBAN segue com a confirmação.
+  var PRECOS = { termos: 205, servico: 105, imt: 55, iva: 0.23 };
+  var MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+  var tplM9 = null, procuradores = null;
+  function ryroxIMT() { return $("imtR").checked; }
+  function eur(n) { return n.toLocaleString("pt-PT", { style: "currency", currency: "EUR" }); }
+  function up(t) { return String(t || "").trim().toUpperCase(); }
+  function partes(iso) { var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || ""); return m ? [m[1], m[2], m[3]] : null; }
+  function mm(id) { var n = num(id); return n > 0 ? String(Math.round(n)) : ""; }
+  function fileSt(id) { var s = FILES[id]; return !s.file ? "mais tarde" : (s.status === "ok" || s.status === "aviso"); }
+  function mirror() { [["m_G", "m_G2"], ["m_H", "m_H2"]].forEach(function (p) { if ($(p[1]).value !== $(p[0]).value) $(p[1]).value = $(p[0]).value; }); }
+  // as fontes base do PDF só têm o alfabeto latino
+  function pdfTxt(t) { return String(t == null ? "" : t).replace(/[‘’]/g, "'").replace(/[^\x20-\x7E -ÿ€–—“”]/g, "").replace(/\s+/g, " ").trim(); }
+  function caixaNova() { return val("q_caixa") === "Outra" ? val("q_desc") : val("q_caixa"); }
+  function motivo() {
+    var t = val("q_trab");
+    if (t === "Outro") return up(val("q_desc")).slice(0, 60) || "ALTERAÇÃO DAS CARACTERÍSTICAS";
+    return t === "Legalizar uma caixa já montada" ? "LEGALIZAÇÃO DA CAIXA MONTADA" : "ALTERAÇÃO DO TIPO DE CAIXA";
   }
-  function closeM() { $("modal").hidden = true; mFor = null; }
-  $("mCancel").onclick = closeM;
-  $("modal").addEventListener("click", function (e) { if (e.target === this) closeM(); });
-  function saveM() {
-    var v = $("mInput").value.replace(",", ".").trim(), n = Number(v);
-    if (!(n > 0)) { $("mErr").textContent = "Escreva a medida em centímetros, por exemplo 285."; return; }
-    if (n > 700) { $("mErr").textContent = "Parece grande demais. A medida é em centímetros."; return; }
-    var id = mFor; $(id).value = v; $(id).closest(".field").classList.remove("ai"); touched[id] = true;
-    syncEE(id); saveDraft(); closeM(); refresh();
+  function ato() {
+    var c = caixaNova().toLowerCase();
+    return val("q_trab") === "Legalizar uma caixa já montada" ? "Legalização da caixa montada (" + c + ")" : "Alteração do tipo de caixa para " + c;
   }
-  $("mOk").onclick = saveM;
-  $("mInput").addEventListener("keydown", function (e) { if (e.key === "Enter") saveM(); if (e.key === "Escape") closeM(); });
-  document.querySelectorAll(".hit").forEach(function (g) {
-    var id = g.getAttribute("data-m");
-    g.addEventListener("click", function () { openM(id); });
-    g.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openM(id); } });
-  });
-  function paintCotas() {
-    var a = num("m_a"), b = num("m_b"), ee = num("m_ee");
-    document.querySelector('[data-lbl="m_a"]').textContent = a > 0 ? "A = " + fmt(a, "cm") + " ✎" : "A · até ao eixo ✎";
-    document.querySelector('[data-lbl="m_b"]').textContent = b > 0 ? "B = " + fmt(b, "cm") + " ✎" : "B · interior total ✎";
-    document.querySelector('[data-lbl="m_ee"]').textContent = ee > 0 ? "Entre eixos = " + fmt(ee, "cm") + " ✎" : "ENTRE EIXOS ✎";
-    var ml = num("m_l"), mh = num("m_h");
-    document.querySelector('[data-lbl="m_l"]').textContent = ml > 0 ? "L = " + fmt(ml, "cm") + " ✎" : "L · largura ✎";
-    document.querySelector('[data-lbl="m_h"]').textContent = mh > 0 ? "H = " + fmt(mh, "cm") : "H · altura ✎";
-    document.querySelector('[data-lbl="m_c"]').textContent = (a > 0 && b > a) ? "C = " + fmt(b - a, "cm") : "C = B − A";
+  function custos() {
+    var L = [["Termo de responsabilidade e termo de conformidade (simples)", PRECOS.termos, true]];
+    if (ryroxIMT()) { L.push(["Organização e entrega do processo no IMT pela Ryrox", PRECOS.servico, true]); L.push(["Taxa do IMT (sem IVA)", PRECOS.imt, false]); }
+    var sem = 0, iva = 0;
+    L.forEach(function (l) { sem += l[1]; if (l[2]) iva += l[1] * PRECOS.iva; });
+    iva = Math.round(iva * 100) / 100;
+    return { linhas: L, iva: iva, total: Math.round((sem + iva) * 100) / 100 };
   }
+  function paintDocs() {
+    var r = ryroxIMT(), emp = $("tipoE").checked, c = custos();
+    $("imtTxt").textContent = r ? "Entregamos o processo em seu nome. Para isso precisamos da procuração assinada." : "Entrega o Modelo 9 e os termos no IMT. Não precisa de procuração.";
+    $("verProc").hidden = !r; $("slot_proc_ass").hidden = !r;
+    $("ccBox").hidden = emp; $("certBox").hidden = !emp; $("certTxt").textContent = val("c_cc") || "—";
+    $("docsTxt").textContent = "Preenchemos " + (r ? "o Modelo 9 e a procuração" : "o Modelo 9") + " com os dados dos passos anteriores. Os campos que ficam em branco são para a Ryrox ou para o IMT.";
+    $("custos").innerHTML = c.linhas.map(function (l) { return "<tr><td>" + esc(l[0]) + "</td><td>" + eur(l[1]) + "</td></tr>"; }).join("") +
+      '<tr class="sub"><td>IVA à taxa de 23% (a taxa do IMT não leva IVA)</td><td>' + eur(c.iva) + "</td></tr>" +
+      '<tr class="tot"><td>Total a transferir</td><td>' + eur(c.total) + "</td></tr>";
+    $("iban").textContent = IBAN ? "IBAN " + IBAN + " · Ryrox - Truck Box Center, Lda" : "O IBAN da Ryrox segue com a confirmação do pedido.";
+  }
+
+  // Modelo 9: escreve os dados por cima do formulário oficial em branco (modelo9.pdf), nas mesmas posições que a Ryrox usa à mão
+  function gerarModelo9() {
+    if (!window.PDFLib) return Promise.reject({ message: "Ainda a preparar. Tente de novo dentro de alguns segundos." });
+    var L = window.PDFLib;
+    if (!tplM9) tplM9 = fetch("modelo9.pdf").then(function (r) { if (!r.ok) throw 0; return r.arrayBuffer(); });
+    return tplM9.then(function (buf) { return L.PDFDocument.load(buf.slice(0)); }).then(function (doc) {
+      return doc.embedFont(L.StandardFonts.Helvetica).then(function (font) {
+        var pg = doc.getPages(), cor = L.rgb(0.05, 0.27, 0.72);
+        function T(p, x, y, txt, size, maxW) {
+          txt = pdfTxt(txt); if (!txt) return;
+          size = size || 9.5;
+          if (maxW) while (size > 5 && font.widthOfTextAtSize(txt, size) > maxW) size -= 0.25;
+          pg[p].drawText(txt, { x: x, y: y, size: size, font: font, color: cor });
+        }
+        var emp = $("tipoE").checked, cp = val("c_cp").split("-"), tel = val("c_tel").replace(/\D/g, "").replace(/^(00)?351(?=\d{9}$)/, "");
+        // pedido e requerente
+        T(0, 429, 666, "X", 10);
+        T(0, 341, 622, motivo(), 9, 225);
+        T(0, 95, 590, up(val("c_nome")), 10, 450);
+        T(0, 99, 549, up(val("c_morada")), 9.5, 450);
+        T(0, 112, 526, up(val("c_loc")), 9.5, 205);
+        T(0, 390, 526, (cp[0] || "") + " " + (cp[1] || ""), 9.5);
+        T(0, 60, 508, up(val("c_loc")), 9.5, 220);
+        T(0, 311, 508, val("c_nif"), 9.5);
+        T(0, 452, 508, tel, 9.5, 92);
+        T(0, 228, 488, val("c_email").toLowerCase(), 9, 320);
+        if (emp) T(0, 300, 415, val("c_cc"), 9.5, 240);
+        else {
+          T(0, 166, 465, up(val("c_cc")), 9, 105);
+          T(0, 308, 465, "REPÚBLICA PORTUGUESA", 8.5, 240);
+          var v = partes(val("c_ccval")); if (v) { T(0, 456, 441, v[0], 8.5); T(0, 494, 441, v[1], 8.5); T(0, 523, 441, v[2], 8.5); }
+        }
+        // características do veículo
+        var mat = norm(val("v_mat"));
+        if (mat.length === 6) { T(0, 89, 345, mat.slice(0, 2)); T(0, 110, 345, mat.slice(2, 4)); T(0, 130, 345, mat.slice(4)); }
+        var dm = partes(val("v_data")); if (dm) { T(0, 229, 345, dm[0]); T(0, 270, 345, dm[1]); T(0, 290, 345, dm[2]); }
+        T(0, 354, 345, up(val("v_marca")), 9.5, 185);
+        T(0, 93, 328, up(val("v_modelo")), 9.5, 205);
+        T(0, 362, 329, up(val("v_hom")), 9.5, 180);
+        T(0, 98, 316, up(val("v_cat")), 9.5, 105);
+        T(0, 237, 315, up(val("v_tipo")), 9.5, 95);
+        T(0, 358, 314, up(val("v_cor")), 9.5, 185);
+        T(0, 101, 300, norm(val("v_vin")), 9.5, 200);
+        T(0, 118, 286, up(val("v_comb")), 9.5, 125);
+        T(0, 444, 286, val("v_cil"), 9.5);
+        T(0, 135, 269, up(val("v_pn1")), 9.5, 185);
+        T(0, 374, 270, up(val("v_pn2") || val("v_pn1")), 9.5, 170);
+        T(0, 183, 254, val("v_ef"), 9.5);
+        T(0, 411, 256, val("v_et"), 9.5);
+        T(0, 115, 224, up(caixaNova()), 9.5, 240);
+        if (mm("m_B")) T(0, 452, 226, mm("m_B") + " MM", 9.5);
+        if (mm("m_F")) T(0, 115, 211, mm("m_F") + " MM", 9.5);
+        if (mm("m_D")) T(0, 272, 211, mm("m_D") + " MM", 9.5);
+        if (val("v_bruto")) T(0, 412, 211, val("v_bruto") + " KG", 9.5);
+        if (val("v_tara")) T(0, 80, 195, val("v_tara") + " KG", 9.5, 55);
+        if (num("v_lug") > 0) T(0, 474, 194, String(Math.round(num("v_lug"))).padStart(3, "0"), 9.5);
+        T(0, 128, 180, up(val("v_matant")), 9.5, 85);
+        // verso: modelo assinalado, características depois da transformação e distâncias
+        T(1, 63, num("v_eixos") === 3 ? 546 : 410, "X", 10);
+        var info = ["CARACTERÍSTICAS DEPOIS DA TRANSFORMAÇÃO:", "TIPO DE CAIXA: " + up(caixaNova()),
+          "COMPRIMENTO DA CAIXA: INTERIOR " + (mm("m_A") || "—") + " MM · EXTERIOR " + (mm("m_B") || "—") + " MM",
+          "LARGURA DA CAIXA: INTERIOR " + (mm("m_E") || "—") + " MM · EXTERIOR " + (mm("m_F") || "—") + " MM",
+          "ALTURA DA CAIXA: INTERIOR " + (mm("m_G") || "—") + " MM · EXTERIOR " + (mm("m_H") || "—") + " MM",
+          "DA FRENTE INTERIOR DA CAIXA AO EIXO TRASEIRO: " + (mm("m_C") || "—") + " MM"];
+        if (val("q_desc")) info.push(up(val("q_desc")).slice(0, 95));
+        info.forEach(function (l, i) { T(1, 278, 748 - i * 11, l, 7.5, 265); });
+        T(1, 295, 647, "SIMPLES", 7, 34);
+        T(1, 414, 647, up(val("v_rod")), 7, 40);
+        var C = num("m_C"), B = num("m_B");
+        if (C > 0) T(1, 506, 563, mm("m_C"), 7.5, 26);
+        if (B > 0 && C > 0 && B > C) T(1, 506, 532, String(Math.round(B - C)), 7.5, 26);
+        if (mm("m_D")) T(1, 506, 408, mm("m_D"), 7.5, 26);
+        if (mm("m_H")) T(1, 506, 315, mm("m_H"), 7.5, 26);
+        if (mm("m_F")) T(1, 506, 284, mm("m_F"), 7.5, 26);
+        doc.setTitle("Modelo 9 - " + fmtMat(val("v_mat")));
+        return doc.save();
+      });
+    });
+  }
+
+  // Procuração ao IMT: o texto da Ryrox; a identificação dos procuradores vem do servidor (não fica nesta página pública)
+  function textoProcuradores() {
+    if (procuradores) return Promise.resolve(procuradores);
+    return post("/procuradores", {}).then(function (r) { if (!r || !Array.isArray(r.texto) || !r.texto.length) throw 0; procuradores = r.texto; return procuradores; });
+  }
+  function gerarProcuracao() {
+    if (!window.PDFLib) return Promise.reject({ message: "Ainda a preparar. Tente de novo dentro de alguns segundos." });
+    var L = window.PDFLib;
+    return textoProcuradores().catch(function () { throw { message: "Não foi possível preparar a procuração agora. Verifique a ligação à internet e tente de novo." }; }).then(function (procs) {
+      return L.PDFDocument.create().then(function (doc) {
+        return Promise.all([doc.embedFont(L.StandardFonts.Helvetica), doc.embedFont(L.StandardFonts.HelveticaBold)]).then(function (f) {
+          var font = f[0], bold = f[1], page = doc.addPage([595.28, 841.89]), X = 72, W = 595.28 - 144, y = 750, LH = 17;
+          function par(t, o) {
+            o = o || {};
+            var fn = o.bold ? bold : font, sz = o.size || 11.5, words = pdfTxt(t).split(" "), line = "", lines = [];
+            words.forEach(function (w) { var tt = line ? line + " " + w : w; if (line && fn.widthOfTextAtSize(tt, sz) > W) { lines.push(line); line = w; } else line = tt; });
+            if (line) lines.push(line);
+            lines.forEach(function (l, i) {
+              var ws = l.split(" ");
+              if (o.justify && i < lines.length - 1 && ws.length > 1) {
+                var gap = (W - fn.widthOfTextAtSize(ws.join(""), sz)) / (ws.length - 1), xx = X;
+                ws.forEach(function (w) { page.drawText(w, { x: xx, y: y, size: sz, font: fn }); xx += fn.widthOfTextAtSize(w, sz) + gap; });
+              } else page.drawText(l, { x: o.center ? X + (W - fn.widthOfTextAtSize(l, sz)) / 2 : X, y: y, size: sz, font: fn });
+              y -= LH;
+            });
+            y -= o.after == null ? 9 : o.after;
+          }
+          var emp = $("tipoE").checked, mor = val("c_morada") + ", " + val("c_cp") + " " + val("c_loc"), v = partes(val("c_ccval"));
+          var quem = emp
+            ? val("c_nome") + ", NIPC " + val("c_nif") + ", com sede em " + mor + ", neste ato representada por " + val("c_rep") + (val("c_cargo") ? ", na qualidade de " + val("c_cargo") : "")
+            : val("c_nome") + ", NIF " + val("c_nif") + ", titular do Cartão de Cidadão n.º " + val("c_cc") + (v ? ", válido até " + v[2] + "/" + v[1] + "/" + v[0] : "") + ", residente em " + mor;
+          par("PROCURAÇÃO", { bold: true, size: 15, center: true, after: 20 });
+          par(quem + ", autoriza que a sociedade Ryrox – Truck Box Center, Lda, NIPC 509541364, com sede na Azinhaga do Campo da Bola, 7090-220 Viana do Alentejo, constitui seus bastantes procuradores:", { justify: true });
+          procs.forEach(function (t) { par(t, { justify: true }); });
+          par("em sua representação, proceda à entrega e recolha de elementos e processos junto do Instituto da Mobilidade e dos Transportes (doravante “IMT”) referente ao veículo da marca " + up(val("v_marca")) + ", modelo " + up(val("v_modelo")) + ", matrícula " + fmtMat(val("v_mat")) + ", para o seguinte ato:", { justify: true });
+          par(ato() + ".");
+          par("Mais se confere os poderes para assinar tudo o que necessário for para os indicados fins.", { justify: true, after: 22 });
+          var d = new Date();
+          par(val("c_loc") + ", " + d.getDate() + " de " + MESES[d.getMonth()] + " de " + d.getFullYear(), { after: 56 });
+          par("______________________________________________________", { center: true, after: 0 });
+          par(emp ? "(assinatura de quem obriga a empresa e carimbo)" : "(assinatura conforme Cartão de Cidadão)", { center: true, size: 10 });
+          doc.setTitle("Procuração IMT - " + fmtMat(val("v_mat")));
+          return doc.save();
+        });
+      });
+    });
+  }
+  function pdfB64(bytes) { return blobB64(new Blob([bytes], { type: "application/pdf" })); }
+  function baixar(bytes, nome) {
+    var url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" })), a = document.createElement("a");
+    a.href = url; a.download = nome; a.target = "_blank"; a.rel = "noopener";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 120000);
+  }
+  function botaoDoc(btn, gerar, nome, txt) {
+    btn.onclick = function () {
+      btn.disabled = true; $("docsErr").className = "muted"; $("docsErr").textContent = "A preparar " + txt + "...";
+      gerar().then(function (x) { baixar(x, nome() + "_" + norm(val("v_mat")) + ".pdf"); $("docsErr").textContent = ""; })
+        .catch(function (e) { $("docsErr").className = "muted err"; $("docsErr").textContent = (e && e.message) || "Não foi possível preparar " + txt + "."; })
+        .then(function () { btn.disabled = false; });
+    };
+  }
+  botaoDoc($("verM9"), gerarModelo9, function () { return "Modelo9"; }, "o Modelo 9");
+  botaoDoc($("verProc"), gerarProcuracao, function () { return "Procuracao_IMT"; }, "a procuração");
 
   buildSlots(); tipoPaint(); go(0); aiStatus();
 
