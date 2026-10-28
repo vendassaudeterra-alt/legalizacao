@@ -1024,7 +1024,7 @@ table.custos tr.tot td { border-bottom: 0; border-top: 2px solid var(--navy); fo
     };
   }
   function ficheirosPedido() {
-    var ids = Object.keys(FILES).filter(function (id) { return FILES[id].file; });
+    var ids = Object.keys(FILES).filter(function (id) { return FILES[id].file && JUNTOS.indexOf(id) < 0 && !(/^cc_/.test(id) && $("tipoE").checked); });
     return Promise.all(ids.map(function (id) {
       var s = FILES[id], f = s.file, pdf = f.type === "application/pdf";
       if (pdf && f.size > 5000000) throw { message: "O PDF «" + s.cfg.nome + "» é grande demais (máximo 5 MB). Envie uma fotografia da ficha." };
@@ -1341,15 +1341,17 @@ table.custos tr.tot td { border-bottom: 0; border-top: 2px solid var(--navy); fo
   $("send").addEventListener("click", function () {
     var btn = this; btn.disabled = true; $("sendTxt").className = "muted"; $("sendTxt").textContent = "A preparar as fotografias...";
     Promise.resolve().then(ficheirosPedido).then(function (fs) {
-      $("sendTxt").textContent = "A preparar o Modelo 9" + (ryroxIMT() ? " e a procuração..." : "...");
-      var mat = norm(val("v_mat")), gera = [gerarModelo9().then(function (x) { return ["modelo9", "Modelo 9 preenchido pelo programa", "Modelo9_" + mat + ".pdf", x]; })];
-      if (ryroxIMT()) gera.push(gerarProcuracao().then(function (x) { return ["procuracao", "Procuração preenchida pelo programa", "Procuracao_IMT_" + mat + ".pdf", x]; }));
-      return Promise.all(gera.map(function (p) {
-        return p.then(function (g) { return pdfB64(g[3]).then(function (b) { return { campo: g[0], rotulo: g[1], nome: g[2], tipo: "application/pdf", b64: b }; }); }).catch(function () { return null; });
-      })).then(function (gs) { return fs.concat(gs.filter(Boolean)); });
+      $("sendTxt").textContent = "A preparar o processo em PDF (Modelo 9" + (ryroxIMT() ? ", procuração" : "") + " e documentos)...";
+      return gerarProcesso().then(function (x) { return pdfB64(x); }).then(function (b) {
+        return fs.concat([{ campo: "processo", rotulo: "Processo em PDF (resumo, Modelo 9" + (ryroxIMT() ? ", procuração" : "") + " e documentos assinados)", nome: "Processo_" + norm(val("v_mat")) + ".pdf", tipo: "application/pdf", b64: b }]);
+      });
     }).then(function (fs) {
       $("sendTxt").textContent = "A enviar o pedido... (pode demorar um minuto, não feche esta página)";
-      return post("/pedido", { hp: $("hp").value, dados: dadosPedido(), ficheiros: fs });
+      var d = dadosPedido(), c = custos();
+      d.medidas.observacoes = "Medidas em mm: " + ["A", "B", "C", "D", "E", "F", "G", "H"].map(function (k) { return k + " " + (mm("m_" + k) || "—"); }).join(" · ") + (val("obs") ? " | " + val("obs") : "");
+      d.pedido.descricao = (val("q_desc") ? val("q_desc") + " | " : "") + "IMT: " + (ryroxIMT() ? "a Ryrox entrega (procuração)" : "o cliente entrega") + " · Total " + eur(c.total) + " com IVA" +
+        " · Assinados: " + (FILES.m9_ass.file ? "Modelo 9 sim" : "Modelo 9 depois") + (ryroxIMT() ? (FILES.proc_ass.file ? ", procuração sim" : ", procuração depois") : "") + " · Comprovativo: " + (FILES.comprov.file ? "sim" : "depois");
+      return post("/pedido", { hp: $("hp").value, dados: d, ficheiros: fs });
     }).then(function (r) {
       $("doneNum").textContent = r.numero; $("sumBox").hidden = true; $("doneBox").hidden = false; window.scrollTo(0, 0);
       try { localStorage.removeItem(KEY); } catch (e) {}
@@ -1361,10 +1363,10 @@ table.custos tr.tot td { border-bottom: 0; border-top: 2px solid var(--navy); fo
 
 
   // ---------- documentos preenchidos (Modelo 9 e procuração), custos e pagamento ----------
-  var IBAN = "";   // IBAN da Ryrox para as transferências. Vazio: a página diz que o IBAN segue com a confirmação.
+  var IBAN = "PT50 0033 0000 4551 4681 5380 5";   // IBAN da Ryrox para as transferências (Millennium bcp). Vazio: a página diz que o IBAN segue com a confirmação.
   var PRECOS = { termos: 205, servico: 105, imt: 55, iva: 0.23 };
   var MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
-  var tplM9 = null, procuradores = null;
+  var tplM9 = null;
   function ryroxIMT() { return $("imtR").checked; }
   function eur(n) { return n.toLocaleString("pt-PT", { style: "currency", currency: "EUR" }); }
   function up(t) { return String(t || "").trim().toUpperCase(); }
@@ -1401,7 +1403,7 @@ table.custos tr.tot td { border-bottom: 0; border-top: 2px solid var(--navy); fo
     $("custos").innerHTML = c.linhas.map(function (l) { return "<tr><td>" + esc(l[0]) + "</td><td>" + eur(l[1]) + "</td></tr>"; }).join("") +
       '<tr class="sub"><td>IVA à taxa de 23% (a taxa do IMT não leva IVA)</td><td>' + eur(c.iva) + "</td></tr>" +
       '<tr class="tot"><td>Total a transferir</td><td>' + eur(c.total) + "</td></tr>";
-    $("iban").textContent = IBAN ? "IBAN " + IBAN + " · Ryrox - Truck Box Center, Lda" : "O IBAN da Ryrox segue com a confirmação do pedido.";
+    $("iban").textContent = IBAN ? "IBAN " + IBAN + " · Millennium bcp · Ryrox - Truck Box Center, Lda" : "O IBAN da Ryrox segue com a confirmação do pedido.";
   }
 
   // Modelo 9: escreve os dados por cima do formulário oficial em branco (modelo9.pdf), nas mesmas posições que a Ryrox usa à mão
@@ -1484,11 +1486,13 @@ table.custos tr.tot td { border-bottom: 0; border-top: 2px solid var(--navy); fo
     });
   }
 
-  // Procuração ao IMT: o texto da Ryrox; a identificação dos procuradores vem do servidor (não fica nesta página pública)
-  function textoProcuradores() {
-    if (procuradores) return Promise.resolve(procuradores);
-    return post("/procuradores", {}).then(function (r) { if (!r || !Array.isArray(r.texto) || !r.texto.length) throw 0; procuradores = r.texto; return procuradores; });
-  }
+  // Procuração ao IMT: o texto da procuração da Ryrox
+  // só os nomes: a identificação completa dos procuradores não fica nesta página pública (a Ryrox junta-a ao processo)
+  var PROCURADORES = [
+    "Ricardo José Pires Luz;",
+    "Rosa Cristina Candeias Delgado;"
+  ];
+  function textoProcuradores() { return Promise.resolve(PROCURADORES); }
   function gerarProcuracao() {
     if (!window.PDFLib) return Promise.reject({ message: "Ainda a preparar. Tente de novo dentro de alguns segundos." });
     var L = window.PDFLib;
@@ -1532,6 +1536,63 @@ table.custos tr.tot td { border-bottom: 0; border-top: 2px solid var(--navy); fo
     });
   }
   function pdfB64(bytes) { return blobB64(new Blob([bytes], { type: "application/pdf" })); }
+  var JUNTOS = ["m9_ass", "proc_ass", "comprov"];
+  function resumoPDF(doc, font, bold) {
+    var W = 595.28, H = 841.89, X = 48, page = doc.addPage([W, H]), y = H - 56, emp = $("tipoE").checked, c = custos();
+    function nova() { page = doc.addPage([W, H]); y = H - 56; }
+    function tit(t) { if (y < 110) nova(); y -= 8; page.drawText(pdfTxt(t), { x: X, y: y, size: 12.5, font: bold, color: window.PDFLib.rgb(0.08, 0.15, 0.29) }); y -= 18; }
+    function lin(l, v) {
+      v = pdfTxt(v); if (!v) return; if (y < 60) nova();
+      l = pdfTxt(l); var ls = 9.5; while (ls > 6 && font.widthOfTextAtSize(l, ls) > 176) ls -= 0.25;
+      page.drawText(l, { x: X, y: y, size: ls, font: font, color: window.PDFLib.rgb(0.36, 0.4, 0.47) });
+      var sz = 10; while (sz > 6 && bold.widthOfTextAtSize(v, sz) > W - X - 230) sz -= 0.25;
+      page.drawText(v, { x: X + 182, y: y, size: sz, font: bold }); y -= 15;
+    }
+    page.drawText(pdfTxt("RYROX · Pedido de legalização"), { x: X, y: y, size: 18, font: bold }); y -= 20;
+    page.drawText(pdfTxt(fmtMat(val("v_mat")) + " · " + val("v_marca") + " " + val("v_modelo") + " · " + new Date().toLocaleString("pt-PT")), { x: X, y: y, size: 10, font: font }); y -= 16;
+    tit("Pedido"); lin("Trabalho", val("q_trab")); lin("Tipo de caixa", caixaNova()); lin("Descrição", val("q_desc"));
+    tit("Cliente"); lin("Tipo", emp ? "Empresa" : "Particular"); lin("Nome", val("c_nome")); lin("NIF", val("c_nif"));
+    lin(emp ? "Certidão permanente" : "Cartão de Cidadão", val("c_cc")); if (!emp) lin("Válido até", val("c_ccval"));
+    if (emp) { lin("Quem assina", val("c_rep")); lin("Cargo", val("c_cargo")); }
+    lin("Morada", val("c_morada") + ", " + val("c_cp") + " " + val("c_loc")); lin("Telemóvel", val("c_tel")); lin("Email", val("c_email"));
+    tit("Medidas da caixa (mm)");
+    [["A", "Comprimento interior"], ["B", "Comprimento exterior"], ["C", "Frente interior ao eixo traseiro"], ["D", "Entre eixos"], ["E", "Largura interior"], ["F", "Largura exterior"], ["G", "Altura interior"], ["H", "Altura exterior"]]
+      .forEach(function (m) { lin(m[0] + " · " + m[1], mm("m_" + m[0]) ? mm("m_" + m[0]) + " mm" : "—"); });
+    lin("Observações", val("obs"));
+    tit("Processo no IMT e pagamento"); lin("Quem entrega no IMT", ryroxIMT() ? "Ryrox (com procuração)" : "O cliente");
+    c.linhas.forEach(function (l) { lin(l[0], eur(l[1])); }); lin("IVA 23%", eur(c.iva)); lin("Total a transferir", eur(c.total));
+    tit("Neste PDF"); lin("Páginas seguintes", "Modelo 9 preenchido" + (ryroxIMT() ? ", procuração preenchida" : "") +
+      JUNTOS.filter(function (id) { return FILES[id].file; }).map(function (id) { return ", " + FILES[id].cfg.nome.toLowerCase(); }).join(""));
+    JUNTOS.forEach(function (id) { if (!FILES[id].file && !(id === "proc_ass" && !ryroxIMT())) lin(FILES[id].cfg.nome, "o cliente envia depois"); });
+  }
+  function juntar(doc, s, bold) {
+    var L = window.PDFLib;
+    if (s.file.type === "application/pdf") return s.file.arrayBuffer().then(function (b) { return L.PDFDocument.load(b, { ignoreEncryption: true }); })
+      .then(function (src) { return doc.copyPages(src, src.getPageIndices()); }).then(function (ps) { ps.forEach(function (p) { doc.addPage(p); }); });
+    return jpeg(s.file, 2000).then(function (b64) { return doc.embedJpg(Uint8Array.from(atob(b64), function (ch) { return ch.charCodeAt(0); })); }).then(function (img) {
+      var W = 595.28, H = 841.89, k = Math.min((W - 60) / img.width, (H - 100) / img.height), pg = doc.addPage([W, H]);
+      pg.drawText(pdfTxt(s.cfg.nome), { x: 30, y: H - 42, size: 13, font: bold });
+      pg.drawImage(img, { x: (W - img.width * k) / 2, y: H - 62 - img.height * k, width: img.width * k, height: img.height * k });
+    });
+  }
+  function gerarProcesso() {
+    var L = window.PDFLib, partes_ = [gerarModelo9()];
+    if (ryroxIMT()) partes_.push(gerarProcuracao());
+    return Promise.all(partes_).then(function (bs) {
+      return L.PDFDocument.create().then(function (doc) {
+        return Promise.all([doc.embedFont(L.StandardFonts.Helvetica), doc.embedFont(L.StandardFonts.HelveticaBold)]).then(function (f) {
+          resumoPDF(doc, f[0], f[1]);
+          var seq = Promise.resolve();
+          bs.forEach(function (b) { seq = seq.then(function () { return L.PDFDocument.load(b); }).then(function (src) { return doc.copyPages(src, src.getPageIndices()); }).then(function (ps) { ps.forEach(function (p) { doc.addPage(p); }); }); });
+          JUNTOS.forEach(function (id) {
+            var s = FILES[id]; if (!s.file || (id === "proc_ass" && !ryroxIMT())) return;
+            seq = seq.then(function () { return juntar(doc, s, f[1]); }).catch(function () {});
+          });
+          return seq.then(function () { doc.setTitle("Processo de legalização - " + fmtMat(val("v_mat"))); return doc.save(); });
+        });
+      });
+    });
+  }
   function baixar(bytes, nome) {
     var url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" })), a = document.createElement("a");
     a.href = url; a.download = nome; a.target = "_blank"; a.rel = "noopener";
