@@ -425,10 +425,12 @@ table.custos tr.tot td { border-bottom: 0; border-top: 2px solid var(--navy); fo
       <p class="muted" id="docsTxt"></p>
       <div class="docbtns"><button type="button" class="btn sec" id="verM9">Ver o Modelo 9</button><button type="button" class="btn sec" id="verProc">Ver a procuração</button></div>
       <p class="muted" id="docsErr"></p>
+      <p class="muted"><b>Os documentos têm de ser assinados digitalmente</b>, com a Chave Móvel Digital ou com o Cartão de Cidadão. Esta assinatura tem o mesmo valor que a assinatura à mão. Uma folha impressa, assinada e fotografada não é aceite.</p>
       <ol class="passos">
-        <li>Abra cada documento e confirme os dados.</li>
-        <li>Imprima e assine: o Modelo 9 no campo «Assinatura» do requerente e a procuração por baixo da linha, como no Cartão de Cidadão.</li>
-        <li>Fotografe ou digitalize as folhas assinadas e carregue-as aqui. Se preferir, pode enviá-las depois.</li>
+        <li>Carregue em «Ver o Modelo 9»<span id="passoProc"> e em «Ver a procuração»</span>, confirme os dados e guarde os PDF.</li>
+        <li>Abra a aplicação <b>Autenticação.gov</b> (no computador ou no telemóvel; descarrega-se em <a href="https://www.autenticacao.gov.pt" target="_blank" rel="noopener">autenticacao.gov.pt</a>) e escolha <b>Assinar</b>.</li>
+        <li>Escolha o PDF e assine com a <b>Chave Móvel Digital</b> (telemóvel, PIN e o código que chega por SMS) ou com o <b>Cartão de Cidadão</b> num leitor de cartões.</li>
+        <li>Carregue aqui o PDF assinado, sem o alterar. <span id="passoEmp">Numa empresa, assina o gerente com a sua Chave Móvel Digital.</span> Se preferir, pode enviá-los depois.</li>
       </ol>
       <div class="slots" id="slotsAss"></div>
     </div>
@@ -494,8 +496,8 @@ table.custos tr.tot td { border-bottom: 0; border-top: 2px solid var(--navy); fo
     { id: "fac", grp: "slotsInsp", nome: "Inspeção facultativa com pesagem", req: true, doc: true, pdf: true },
     { id: "cc_f", grp: "slotsCC", nome: "Cartão de Cidadão · frente", req: true, doc: true, pdf: true },
     { id: "cc_v", grp: "slotsCC", nome: "Cartão de Cidadão · verso", req: true, doc: true, pdf: true },
-    { id: "m9_ass", grp: "slotsAss", nome: "Modelo 9 assinado", doc: true, pdf: true, opc: true },
-    { id: "proc_ass", grp: "slotsAss", nome: "Procuração assinada", doc: true, pdf: true, opc: true },
+    { id: "m9_ass", grp: "slotsAss", nome: "Modelo 9 assinado digitalmente", doc: true, pdf: true, opc: true, ass: true },
+    { id: "proc_ass", grp: "slotsAss", nome: "Procuração assinada digitalmente", doc: true, pdf: true, opc: true, ass: true },
     { id: "comprov", grp: "slotsPag", nome: "Comprovativo da transferência", doc: true, pdf: true, opc: true }
   ];
   // posição da câmara numa vista de cima (frente da viatura para cima)
@@ -601,7 +603,7 @@ table.custos tr.tot td { border-bottom: 0; border-top: 2px solid var(--navy); fo
     Object.keys(FILES).forEach(function (id) {
       var s = FILES[id], c = s.cfg, el = document.createElement("div");
       el.className = "slot"; el.id = "slot_" + id;
-      var accept = c.pdf ? "image/*,application/pdf" : "image/*";
+      var accept = c.ass ? "application/pdf,.pdf" : c.pdf ? "image/*,application/pdf" : "image/*";
       if (c.foto) {
         el.className = "slot foto";
         el.innerHTML = '<div class="hd"><b><span class="n">' + c.n + '</span>' + c.nome + '</b><span class="chip" data-chip></span></div>' +
@@ -620,7 +622,7 @@ table.custos tr.tot td { border-bottom: 0; border-top: 2px solid var(--navy); fo
       el.innerHTML = '<div class="hd"><b>' + c.nome + '</b><span class="chip" data-chip></span></div>' +
         '<label class="view"><input type="file" id="file_' + id + '" accept="' + accept + '">' +
         '<span data-view>' + (c.foto ? guideSVG(c) : docIcon()) + '</span><span class="add" data-add>Tirar ou escolher</span></label>' +
-        (!c.foto && navigator.mediaDevices && navigator.mediaDevices.getUserMedia ? '<button type="button" class="cam" data-cam>Fotografar com guia</button>' : "") +
+        (!c.foto && !c.ass && navigator.mediaDevices && navigator.mediaDevices.getUserMedia ? '<button type="button" class="cam" data-cam>Fotografar com guia</button>' : "") +
         '<div class="res" data-res></div>';
       $(c.grp).appendChild(el);
       el.querySelector("input").addEventListener("change", function (e) { if (e.target.files[0]) takeFile(id, e.target.files[0]); e.target.value = ""; });
@@ -636,12 +638,13 @@ table.custos tr.tot td { border-bottom: 0; border-top: 2px solid var(--navy); fo
     chip.className = "chip " + c[0]; chip.textContent = c[1];
     if (id === "fac" && $("facPend") && $("facPend").checked && !s.file) { chip.className = "chip aviso"; chip.textContent = "Mais tarde"; }
     if (s.cfg.opc && !s.file) { chip.className = "chip"; chip.textContent = "Pode ser depois"; }
+    if (s.cfg.ass && s.status === "ok") chip.textContent = "Assinado";
     var view = el.querySelector("[data-view]");
     if (s.file && s.url) view.innerHTML = '<img class="ph" alt="" src="' + s.url + '">' + (s.cfg.foto ? '<img class="mini" alt="" src="' + s.cfg.img + '">' : "");
     else if (s.file) view.innerHTML = '<span class="pdf">PDF</span>';
     else view.innerHTML = s.cfg.foto ? '<img class="guia" alt="" src="' + s.cfg.img + '">' : docIcon();
     if (s.cfg.foto) el.querySelector("[data-add]").innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.6" fill="none" stroke="currentColor" stroke-width="2"/></svg>' + (s.file ? "Repetir" : "Fotografar");
-    else el.querySelector("[data-add]").textContent = s.file ? "Substituir" : "Tirar ou escolher";
+    else el.querySelector("[data-add]").textContent = s.file ? "Substituir" : s.cfg.ass ? "Escolher o PDF assinado" : "Tirar ou escolher";
     var res = el.querySelector("[data-res]");
     var html = "";
     if (s.msgs.length) html += "<ul>" + s.msgs.map(function (m) { return "<li>" + esc(m) + "</li>"; }).join("") + "</ul>";
@@ -683,11 +686,29 @@ table.custos tr.tot td { border-bottom: 0; border-top: 2px solid var(--navy); fo
   }
   function ham(a, b) { var c = 0; for (var i = 0; i < 64; i++) if (a[i] !== b[i]) c++; return c; }
 
+  // Um PDF assinado digitalmente (Chave Móvel Digital, Cartão de Cidadão) tem um dicionário /Sig com /ByteRange e /Contents.
+  // Aqui só se confirma que a assinatura existe; a validade confirma-a a Ryrox no Adobe Reader ou na aplicação Autenticação.gov.
+  function temAssinatura(bytes) {
+    var t = "", b = new Uint8Array(bytes), i;
+    for (i = 0; i < b.length; i += 65536) t += String.fromCharCode.apply(null, b.subarray(i, Math.min(b.length, i + 65536)));
+    return /\/ByteRange\s*\[/.test(t) && /\/Type\s*\/Sig\b|\/SubFilter\s*\/(adbe\.pkcs7|ETSI\.CAdES)/.test(t);
+  }
+  function verAssinatura(id) {
+    var s = FILES[id], f = s.file;
+    var fim = function (st, m) { if (s.file !== f) return; s.status = st; s.msgs = [m]; paintSlot(id); refresh(); };
+    if (f.type !== "application/pdf" && !/\.pdf$/i.test(f.name)) return fim("erro", "Tem de ser o PDF assinado digitalmente. Fotografias de folhas assinadas não são aceites.");
+    if (f.size > 5000000) return fim("erro", "O PDF é grande demais (máximo 5 MB).");
+    f.arrayBuffer().then(function (b) {
+      if (temAssinatura(b)) fim("ok", "Assinatura digital encontrada. O PDF segue tal como está, para a assinatura continuar válida.");
+      else fim("erro", "Este PDF não tem assinatura digital. Assine-o na aplicação Autenticação.gov (Chave Móvel Digital ou Cartão de Cidadão) e carregue o PDF que ela gravar.");
+    }, function () { fim("erro", "Não foi possível abrir este PDF. Tente de novo."); });
+  }
   function takeFile(id, file) {
     var s = FILES[id];
     if (s.url) URL.revokeObjectURL(s.url);
     s.file = file; s.url = null; s.ai = null; s.msgs = []; s.status = "analisar"; s.hash = null;
     paintSlot(id); refresh();
+    if (s.cfg.ass) { verAssinatura(id); return; }
     if (file.type === "application/pdf") {
       s.status = "ok"; s.msgs = ["PDF recebido. A Ryrox confirma o conteúdo."]; paintSlot(id); refresh(); return;
     }
@@ -1020,11 +1041,16 @@ table.custos tr.tot td { border-bottom: 0; border-top: 2px solid var(--navy); fo
         rodado: val("v_rod"), pneus_frente: val("v_pn1"), pneus_tras: val("v_pn2"), observacoes: val("v_z") },
       inspecao: { pendente: $("facPend").checked && !FILES.fac.file ? "Sim" : "", peso_frente: val("p_f"), peso_tras: val("p_t"), peso_total: pf > 0 && pt > 0 ? String(pf + pt) : "" },
       medidas: { comprimento_interior: val("m_A"), comprimento_exterior: val("m_B"), frente_eixo: val("m_C"), entre_eixos: val("m_D"), largura_interior: val("m_E"), largura_exterior: val("m_F"), altura_interior: val("m_G"), altura_exterior: val("m_H"), observacoes: val("obs") },
-      documentos: { entrega_imt: ryroxIMT() ? "Ryrox (com procuração)" : "O cliente", certidao_permanente: emp ? val("c_cc") : "", total: eur(custos().total) + " (com IVA)", modelo9_assinado: FILES.m9_ass.file ? "Sim" : "Envia depois", procuracao_assinada: !ryroxIMT() ? "" : FILES.proc_ass.file ? "Sim" : "Envia depois", comprovativo: FILES.comprov.file ? "Sim" : "Envia depois" }
+      documentos: { entrega_imt: ryroxIMT() ? "Ryrox (com procuração)" : "O cliente", certidao_permanente: emp ? val("c_cc") : "", total: eur(custos().total) + " (com IVA)", modelo9_assinado: assinado("m9_ass") ? "Sim, assinatura digital" : "Envia depois", procuracao_assinada: !ryroxIMT() ? "" : assinado("proc_ass") ? "Sim, assinatura digital" : "Envia depois", comprovativo: FILES.comprov.file ? "Sim" : "Envia depois" }
     };
   }
   function ficheirosPedido() {
-    var ids = Object.keys(FILES).filter(function (id) { return FILES[id].file && JUNTOS.indexOf(id) < 0 && !(/^cc_/.test(id) && $("tipoE").checked); });
+    var ids = Object.keys(FILES).filter(function (id) {
+      var s = FILES[id];
+      if (!s.file || JUNTOS.indexOf(id) >= 0) return false;
+      if (s.cfg.ass) return s.status === "ok" && (id !== "proc_ass" || ryroxIMT());
+      return true;
+    });
     return Promise.all(ids.map(function (id) {
       var s = FILES[id], f = s.file, pdf = f.type === "application/pdf";
       if (pdf && f.size > 5000000) throw { message: "O PDF «" + s.cfg.nome + "» é grande demais (máximo 5 MB). Envie uma fotografia da ficha." };
@@ -1251,8 +1277,8 @@ table.custos tr.tot td { border-bottom: 0; border-top: 2px solid var(--navy); fo
       [4, "Seis fotografias da viatura", stepDone(4)],
       [5, "Medidas da caixa", stepDone(5)],
       [6, $("tipoE").checked ? "Código da certidão permanente" : "Cartão de Cidadão (frente e verso)", stepDone(6)],
-      [6, "Modelo 9 assinado", fileSt("m9_ass")],
-      ryroxIMT() ? [6, "Procuração assinada", fileSt("proc_ass")] : null,
+      [6, "Modelo 9 assinado digitalmente", fileSt("m9_ass")],
+      ryroxIMT() ? [6, "Procuração assinada digitalmente", fileSt("proc_ass")] : null,
       [6, "Comprovativo da transferência", fileSt("comprov")]
     ].filter(Boolean);
     $("checklist").innerHTML = rows.map(function (r) {
@@ -1343,14 +1369,14 @@ table.custos tr.tot td { border-bottom: 0; border-top: 2px solid var(--navy); fo
     Promise.resolve().then(ficheirosPedido).then(function (fs) {
       $("sendTxt").textContent = "A preparar o processo em PDF (Modelo 9" + (ryroxIMT() ? ", procuração" : "") + " e documentos)...";
       return gerarProcesso().then(function (x) { return pdfB64(x); }).then(function (b) {
-        return fs.concat([{ campo: "processo", rotulo: "Processo em PDF (resumo, Modelo 9" + (ryroxIMT() ? ", procuração" : "") + " e documentos assinados)", nome: "Processo_" + norm(val("v_mat")) + ".pdf", tipo: "application/pdf", b64: b }]);
+        return fs.concat([{ campo: "processo", rotulo: "Processo em PDF (resumo, Modelo 9" + (ryroxIMT() ? " e procuração" : "") + " preenchidos, Cartão de Cidadão e comprovativo)", nome: "Processo_" + norm(val("v_mat")) + ".pdf", tipo: "application/pdf", b64: b }]);
       });
     }).then(function (fs) {
       $("sendTxt").textContent = "A enviar o pedido... (pode demorar um minuto, não feche esta página)";
       var d = dadosPedido(), c = custos();
       d.medidas.observacoes = "Medidas em mm: " + ["A", "B", "C", "D", "E", "F", "G", "H"].map(function (k) { return k + " " + (mm("m_" + k) || "—"); }).join(" · ") + (val("obs") ? " | " + val("obs") : "");
       d.pedido.descricao = (val("q_desc") ? val("q_desc") + " | " : "") + "IMT: " + (ryroxIMT() ? "a Ryrox entrega (procuração)" : "o cliente entrega") + " · Total " + eur(c.total) + " com IVA" +
-        " · Assinados: " + (FILES.m9_ass.file ? "Modelo 9 sim" : "Modelo 9 depois") + (ryroxIMT() ? (FILES.proc_ass.file ? ", procuração sim" : ", procuração depois") : "") + " · Comprovativo: " + (FILES.comprov.file ? "sim" : "depois");
+        " · Assinatura digital: " + (assinado("m9_ass") ? "Modelo 9 sim" : "Modelo 9 depois") + (ryroxIMT() ? (assinado("proc_ass") ? ", procuração sim" : ", procuração depois") : "") + " · Comprovativo: " + (FILES.comprov.file ? "sim" : "depois");
       return post("/pedido", { hp: $("hp").value, dados: d, ficheiros: fs });
     }).then(function (r) {
       $("doneNum").textContent = r.numero; $("sumBox").hidden = true; $("doneBox").hidden = false; window.scrollTo(0, 0);
@@ -1397,7 +1423,7 @@ table.custos tr.tot td { border-bottom: 0; border-top: 2px solid var(--navy); fo
   function paintDocs() {
     var r = ryroxIMT(), emp = $("tipoE").checked, c = custos();
     $("imtTxt").textContent = r ? "Entregamos o processo em seu nome. Para isso precisamos da procuração assinada." : "Entrega o Modelo 9 e os termos no IMT. Não precisa de procuração.";
-    $("verProc").hidden = !r; $("slot_proc_ass").hidden = !r;
+    $("verProc").hidden = !r; $("slot_proc_ass").hidden = !r; $("passoProc").hidden = !r; $("passoEmp").hidden = !emp;
     $("ccBox").hidden = emp; $("certBox").hidden = !emp; $("certTxt").textContent = val("c_cc") || "—";
     $("docsTxt").textContent = "Preenchemos " + (r ? "o Modelo 9 e a procuração" : "o Modelo 9") + " com os dados dos passos anteriores. Os campos que ficam em branco são para a Ryrox ou para o IMT.";
     $("custos").innerHTML = c.linhas.map(function (l) { return "<tr><td>" + esc(l[0]) + "</td><td>" + eur(l[1]) + "</td></tr>"; }).join("") +
@@ -1536,7 +1562,9 @@ table.custos tr.tot td { border-bottom: 0; border-top: 2px solid var(--navy); fo
     });
   }
   function pdfB64(bytes) { return blobB64(new Blob([bytes], { type: "application/pdf" })); }
-  var JUNTOS = ["m9_ass", "proc_ass", "comprov"];
+  var JUNTOS = ["cc_f", "cc_v", "comprov"];   // vão dentro do PDF do processo; os documentos assinados seguem à parte, intactos
+  function juntaSe(id) { return !!FILES[id].file && !(/^cc_/.test(id) && $("tipoE").checked); }
+  function assinado(id) { return !!FILES[id].file && FILES[id].status === "ok"; }
   function resumoPDF(doc, font, bold) {
     var W = 595.28, H = 841.89, X = 48, page = doc.addPage([W, H]), y = H - 56, emp = $("tipoE").checked, c = custos();
     function nova() { page = doc.addPage([W, H]); y = H - 56; }
@@ -1561,9 +1589,12 @@ table.custos tr.tot td { border-bottom: 0; border-top: 2px solid var(--navy); fo
     lin("Observações", val("obs"));
     tit("Processo no IMT e pagamento"); lin("Quem entrega no IMT", ryroxIMT() ? "Ryrox (com procuração)" : "O cliente");
     c.linhas.forEach(function (l) { lin(l[0], eur(l[1])); }); lin("IVA 23%", eur(c.iva)); lin("Total a transferir", eur(c.total));
-    tit("Neste PDF"); lin("Páginas seguintes", "Modelo 9 preenchido" + (ryroxIMT() ? ", procuração preenchida" : "") +
-      JUNTOS.filter(function (id) { return FILES[id].file; }).map(function (id) { return ", " + FILES[id].cfg.nome.toLowerCase(); }).join(""));
-    JUNTOS.forEach(function (id) { if (!FILES[id].file && !(id === "proc_ass" && !ryroxIMT())) lin(FILES[id].cfg.nome, "o cliente envia depois"); });
+    tit("Neste PDF"); lin("Páginas seguintes", "Modelo 9 preenchido" + (ryroxIMT() ? ", procuração preenchida" : "") + " (sem assinatura)" +
+      JUNTOS.filter(juntaSe).map(function (id) { return ", " + FILES[id].cfg.nome.toLowerCase(); }).join(""));
+    tit("Assinaturas digitais (PDF à parte, no email)");
+    lin("Modelo 9", assinado("m9_ass") ? "assinado digitalmente, segue em anexo" : "o cliente envia depois");
+    if (ryroxIMT()) lin("Procuração", assinado("proc_ass") ? "assinada digitalmente, segue em anexo" : "o cliente envia depois");
+    if (!FILES.comprov.file) lin(FILES.comprov.cfg.nome, "o cliente envia depois");
   }
   function juntar(doc, s, bold) {
     var L = window.PDFLib;
@@ -1585,7 +1616,7 @@ table.custos tr.tot td { border-bottom: 0; border-top: 2px solid var(--navy); fo
           var seq = Promise.resolve();
           bs.forEach(function (b) { seq = seq.then(function () { return L.PDFDocument.load(b); }).then(function (src) { return doc.copyPages(src, src.getPageIndices()); }).then(function (ps) { ps.forEach(function (p) { doc.addPage(p); }); }); });
           JUNTOS.forEach(function (id) {
-            var s = FILES[id]; if (!s.file || (id === "proc_ass" && !ryroxIMT())) return;
+            var s = FILES[id]; if (!juntaSe(id)) return;
             seq = seq.then(function () { return juntar(doc, s, f[1]); }).catch(function () {});
           });
           return seq.then(function () { doc.setTitle("Processo de legalização - " + fmtMat(val("v_mat"))); return doc.save(); });
